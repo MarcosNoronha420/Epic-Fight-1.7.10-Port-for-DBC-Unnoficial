@@ -11,6 +11,11 @@ A conversão final DBC/JBRA e o consumo pelo collider continuam pendentes; o gat
 de integração da Fase 2 não está liberado por esta entrega. As decisões de auditoria
 abaixo registram o estado original da Fase 0.
 
+Dependência espacial: `feature/dbc-spatial-transform` extrai os operadores locais
+compartilhados com o renderer, mas para na fronteira nativa de escala/bases por
+parte/forms/fast flight. Veja [evidências e dados faltantes](DBC-SPATIAL-TRANSFORM.md).
+Transformação completa para world e joint-local continuam bloqueados.
+
 ## Decisão desta entrega
 
 Auditoria e testes standalone em `feature/joint-local-collider`. Nenhum runtime,

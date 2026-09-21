@@ -394,7 +394,7 @@ final class JbraWeightedPartRenderer {
         float offX=a==null?0:Reflect.getFloat(a.offX,part,0),offY=a==null?0:Reflect.getFloat(a.offY,part,0),offZ=a==null?0:Reflect.getFloat(a.offZ,part,0);
         // Same coordinate conversion used for compiled vertices: Minecraft model X is
         // mirrored into Epic X and model Y is measured down from the 1.5-block top.
-        float pivotX=-(offX+rpX*scale),pivotY=1.5F-(offY+rpY*scale),pivotZ=offZ+rpZ*scale;
+        float pivotX=DbcSpatialMath.basisX(offX+rpX*scale),pivotY=DbcSpatialMath.basisY(offY+rpY*scale),pivotZ=offZ+rpZ*scale;
         compileNode(part,role,scale,identity,true,0,verts);
         CompiledMesh compiled=new CompiledMesh(verts.toArray(new CompiledVertex[verts.size()]),role,pivotX,pivotY,pivotZ);
         if(!skinDedupeLogged&&compiled.vertices.length>0){skinDedupeLogged=true;System.out.println("[EpicFight1710] Weighted skin-point cache active: UV/triangle topology stays unchanged while duplicate triangle corners share one matrix-skin result per frame (first mesh "+compiled.vertices.length+" corners -> "+compiled.skinVertices.length+" unique points).");}
@@ -512,16 +512,8 @@ final class JbraWeightedPartRenderer {
     }
 
     private static float[] transform(float tx,float ty,float tz,float rx,float ry,float rz) {
-        float[] t=new float[16];Mat4.identity(t);t[3]=tx;t[7]=ty;t[11]=tz;
-        if(rz!=0.0F)t=mulNew(t,rotationZ(rz));
-        if(ry!=0.0F)t=mulNew(t,rotationY(ry));
-        if(rx!=0.0F)t=mulNew(t,rotationX(rx));
-        return t;
+        return DbcSpatialMath.nodeTransform(tx,ty,tz,rx,ry,rz);
     }
-    private static float[] mulNew(float[] a,float[] b){float[] o=new float[16];Mat4.mul(a,b,o);return o;}
-    private static float[] rotationX(float a){float[] m=new float[16];Mat4.identity(m);float c=(float)Math.cos(a),s=(float)Math.sin(a);m[5]=c;m[6]=-s;m[9]=s;m[10]=c;return m;}
-    private static float[] rotationY(float a){float[] m=new float[16];Mat4.identity(m);float c=(float)Math.cos(a),s=(float)Math.sin(a);m[0]=c;m[2]=s;m[8]=-s;m[10]=c;return m;}
-    private static float[] rotationZ(float a){float[] m=new float[16];Mat4.identity(m);float c=(float)Math.cos(a),s=(float)Math.sin(a);m[0]=c;m[1]=-s;m[4]=s;m[5]=c;return m;}
 
     private boolean readQuad(Object quad,float[][] out,float[] bind,float scale)throws Exception {
         QuadAccess qa=quadAccess(quad.getClass());if(qa==null)return false;Object arr=Reflect.get(qa.vertices,quad);if(arr==null||!arr.getClass().isArray()||Array.getLength(arr)<4)return false;
@@ -541,7 +533,7 @@ final class JbraWeightedPartRenderer {
         float mz=c[0][2]*a+c[1][2]*b+c[2][2]*d+c[3][2]*e;
         float u=c[0][3]*a+c[1][3]*b+c[2][3]*d+c[3][3]*e;
         float v=c[0][4]*a+c[1][4]*b+c[2][4]*d+c[3][4]*e;
-        return compiledVertexFromEpic(-mx,1.5F-my,mz,u,v,role);
+        return compiledVertexFromEpic(DbcSpatialMath.basisX(mx),DbcSpatialMath.basisY(my),mz,u,v,role);
     }
 
     private CompiledVertex compiledVertexFromEpic(float ex,float ey,float ez,float u,float v,NativeJbraSkinContext.PartRole role) {
@@ -928,8 +920,8 @@ final class JbraWeightedPartRenderer {
         // then uses EpicFirstPersonBridge's exact inverse T(0,1.5,0)*S(-1,-1,1).
         // Keeping one basis contract for both camera modes prevents the arm geometry
         // from changing scale/winding/UV behavior merely because POV is active.
-        float ox=-v.x,oy=1.5F-v.y,oz=v.z;
-        float nx=-sx,ny=1.5F-sy,nz=sz;
+        float ox=DbcSpatialMath.basisX(v.x),oy=DbcSpatialMath.basisY(v.y),oz=v.z;
+        float nx=DbcSpatialMath.basisX(sx),ny=DbcSpatialMath.basisY(sy),nz=sz;
         float dx=nx-ox,dy=ny-oy,dz=nz-oz;
         if(!finite(nx)||!finite(ny)||!finite(nz)||dx*dx+dy*dy+dz*dz>9.0F){nx=ox;ny=oy;nz=oz;}
         // Head/body socket reconciliation is intentionally NOT performed here.

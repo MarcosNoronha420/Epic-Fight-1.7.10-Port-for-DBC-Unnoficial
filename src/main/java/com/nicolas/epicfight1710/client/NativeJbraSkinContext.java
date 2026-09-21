@@ -1,7 +1,6 @@
 package com.nicolas.epicfight1710.client;
 
 import com.nicolas.epicfight1710.util.Reflect;
-import com.nicolas.epicfight1710.anim.Mat4;
 import java.util.IdentityHashMap;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
@@ -50,12 +49,6 @@ public final class NativeJbraSkinContext {
     private Class<?> nativeHeadPartType;
     private Field nativeHeadRpX,nativeHeadRpY,nativeHeadRpZ;
     private final FloatBuffer headPoseBuffer=ByteBuffer.allocateDirect(16*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-    private final float[] epicToJbra={
-        -1,0,0,0,
-         0,-1,0,1.5F,
-         0,0,1,0,
-         0,0,0,1
-    };
     private final float[] headPoseTmp=new float[16];
     private final float[] headPoseJbra=new float[16];
     private boolean nativeHeadPoseLogged,nativeHeadPoseWarned;
@@ -424,8 +417,7 @@ public final class NativeJbraSkinContext {
             if(chest<0||skin==null||chest>=skin.length||skin[chest]==null||skin[chest].length<16)return false;
             // C maps Epic body coordinates to the JBRA model basis:
             //   (-x, 1.5-y, +z).  C is its own inverse, so D_jbra=C*D_epic*C.
-            Mat4.mul(epicToJbra,skin[chest],headPoseTmp);
-            Mat4.mul(headPoseTmp,epicToJbra,headPoseJbra);
+            DbcSpatialMath.deformationToModel(skin[chest],headPoseTmp,headPoseJbra);
             ((Buffer)headPoseBuffer).clear();
             // LWJGL/OpenGL consumes column-major floats; Mat4 is row-major.
             for(int c=0;c<4;c++)for(int r=0;r<4;r++)headPoseBuffer.put(headPoseJbra[r*4+c]);

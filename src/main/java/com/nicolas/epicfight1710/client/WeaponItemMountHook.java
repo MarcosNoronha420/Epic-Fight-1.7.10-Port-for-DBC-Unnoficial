@@ -130,10 +130,7 @@ public final class WeaponItemMountHook {
      * Epic -> JBRA: p_j = R p_e + q, R=diag(-1,-1,+1), q=(0,1.5,0).
      * For a transform A this is C(A)=[R A3 R, R t + q]. */
     static void epicToJbra(float[] epic,float[] out) {
-        out[0]= epic[0]; out[1]= epic[1]; out[2]=-epic[2];  out[3]=-epic[3];
-        out[4]= epic[4]; out[5]= epic[5]; out[6]=-epic[6];  out[7]=1.5F-epic[7];
-        out[8]=-epic[8]; out[9]=-epic[9]; out[10]=epic[10]; out[11]=epic[11];
-        out[12]=out[13]=out[14]=0.0F;out[15]=1.0F;
+        DbcSpatialMath.jointFrameToModel(epic,out);
     }
 
     /** Package-private pure-math hook for release audits; no GL or game state. */
