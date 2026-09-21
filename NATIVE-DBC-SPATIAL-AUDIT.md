@@ -188,3 +188,42 @@ também foram executadas, preservando os golden tests e assets anteriores.
 
 Os JARs e fontes decompiladas não fazem parte do commit. `reference/native/`
 e a grafia local `Reference/Native/` estão cobertas pelo `.gitignore`.
+
+## Continuação: procedência dos dados antes de conectar o provider
+
+Inspeção adicional dos mesmos JARs, sem alteração de runtime. O gerador de
+auditoria agora inclui `JRMCoreHJYC` e `JRMCoreHJFC` para tornar esta inspeção
+reproduzível. A implementação parcial permanece no commit `5f0fe40`; esta
+continuação não declara a Fase 2 concluída nem libera joint-local.
+
+| Entrada | Origem exata | Fronteira de captura |
+|---|---|---|
+| ageDivisor f | JBRA `RenderPlayerJBRA.func_130009_a`: quando `JRMCoreH.JYC()`, `childScl=3-2*JRMCoreHJYC.JYCsizeBasedOnAge(player)` | Recalcular de dados autoritativos, nunca ler `childSclGet()` do render. |
+| tamanho por idade | JRMCore `JRMCoreHJYC.JYCsizeBasedOnAge`: `JYearsCH.p` (nome;idade), `JYearsCConfig.pgut`, `JRMCoreH.data(nome,1/2,default)` | O helper está no JAR auditado; Years C/configuração ativa e suas fixtures não estão nos três JARs fornecidos. Não chamar setters para resolver dados. |
+| modelVariant g | JBRA `func_130009_a`: sob `JFC()` e `dnn(1)`, nome em `plyrs`, DNS de `data1`, `dnsGender+1`; Oozaru força 1 | Não confundir gênero/variante com body type cosmético. Ausência de linha válida não autoriza herdar o static anterior. |
+| gravidez p / breast b | JBRA mesmo método: `preg[pl]`, `dnn(30)`, `JFCgetConfigpt()*120`, e `dnsBreast(data1 DNS)` | Geometria adicional fora do descritor parcial; depende de configuração Family C. |
+| NPC f/g | JRMCore `JRMCoreHJFC.modelHelper`: `EntityNPC.getNPCgrw()`, `getDNS()`, `dnsGender+1` | Escreve ModelBipedBody.f/g e mdl.b. Não usar como getter puro nem generalizar para todo mob. NPCs ficam em fase própria. |
+
+Fórmula observada de idade: yc começa em 1; na linha do player, idade A<=5
+atribui .5; A>5 e A<=gu atribui `.5+(A-5)/(gu-5)*.5`; A>gu atribui 1;
+depois aplica mínimo .5531915. As condições são sequenciais, não uma fórmula
+nova com clamp arbitrário. Saiyan/half-Saiyan nas formas 7/8 ou 14 retornam 1
+no helper. O renderer então aplica `3-yc*2`. Essas constantes descrevem o
+bytecode decompilado; não são fallback autorizado quando a captura está ausente.
+
+`func_130009_a` só atribui alguns campos dentro dos gates JYC/JFC e quando
+encontra dados do nome. Consequentemente, copiar os static gen/childScl/preg
+reproduziria potencial dependência da ordem dos renders. Isso é incompatível
+com identidade por player/world/tick. Não foi corrigido o renderer nesta etapa.
+
+Menor continuação segura: estabelecer um snapshot de entrada por tick que copie
+as linhas de dados/config relevantes e registre disponibilidade e identidade;
+para addons ausentes, demonstrar o ramo de ausência, sem simular dados ausentes
+como se fossem presença. Para addons presentes, obter configurações e fixtures
+exatas. Testar dois jogadores intercalados e dados atrasados/ausentes antes de
+conectar esse snapshot ao kernel. A composição final de sockets/world e a
+política de fast flight continuam sendo gates separados, mesmo após a captura.
+
+Não há impedimento para estudar um subconjunto sem addons; porém esta entrega
+não afirma ter implementado seu adaptador de captura ou validado suas posições
+world. Os testes numéricos existentes continuam verificando entradas explícitas.

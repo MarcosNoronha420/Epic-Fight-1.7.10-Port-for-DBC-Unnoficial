@@ -26,7 +26,7 @@ for name, digest in expected.items():
 
 classes = {
     "JBRA-Client-v1.6.52.jar": ["JinRyuu/JBRA/RenderPlayerJBRA", "JinRyuu/JBRA/ModelBipedDBC", "JinRyuu/JBRA/ModelRendererJBRA"],
-    "JRMCore-v1.3.51.jar": ["JinRyuu/JRMCore/entity/ModelBipedBody", "JinRyuu/JRMCore/JRMCoreHDBC", "JinRyuu/JRMCore/JRMCoreH", "JinRyuu/JRMCore/i/ExtendedPlayer"],
+    "JRMCore-v1.3.51.jar": ["JinRyuu/JRMCore/entity/ModelBipedBody", "JinRyuu/JRMCore/JRMCoreHDBC", "JinRyuu/JRMCore/JRMCoreH", "JinRyuu/JRMCore/i/ExtendedPlayer", "JinRyuu/JRMCore/JRMCoreHJYC", "JinRyuu/JRMCore/JRMCoreHJFC"],
     "DragonBlockC-v1.4.85.jar": ["JinRyuu/DragonBC/common/DBCClientTickHandler", "JinRyuu/DragonBC/common/Render/ModelBipedDBC"],
 }
 for jar, names in classes.items():
