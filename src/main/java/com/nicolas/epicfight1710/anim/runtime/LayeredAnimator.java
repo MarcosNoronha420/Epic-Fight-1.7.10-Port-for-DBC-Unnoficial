@@ -295,11 +295,7 @@ public final class LayeredAnimator {
             }
         }
 
-        for(int j=0;j<mesh.jointCount;j++) {
-            int p=mesh.parent[j];
-            makeBoundLocal(j,composedPose.has(j)?composedPose.joint(j):IDENTITY,local[j]);
-            if(p<0)Mat4.copy(local[j],global[j]);else Mat4.mul(global[p],local[j],global[j]);
-        }
+        ArmaturePoseMath.globals(mesh,composedPose,local,global,matrixTemp);
         if(++poseSerial==Integer.MIN_VALUE)poseSerial=1;
 
         if(dbcJbraProfile) {
@@ -309,7 +305,7 @@ public final class LayeredAnimator {
             // hierarchy (Torso -> Chest -> Head) owns body continuity exactly once.
             // Leg sockets are still retargeted at skin time against neutral JBRA pivots.
         }
-        for(int j=0;j<mesh.jointCount;j++)Mat4.mul(global[j],mesh.invBindGlobal[j],skin[j]);
+        ArmaturePoseMath.skinning(mesh,global,skin);
 
         // WORLD-BODY first person (2.0.34+) consumes this same final DBC-compatible
         // armature pose. A parallel first-person pose hierarchy remained from the
@@ -453,37 +449,7 @@ public final class LayeredAnimator {
      * translation, pitch and roll remain stripped.
      */
     private void sanitizeDbcLayerPose(AnimationPose pose,boolean keepRootYaw,boolean keepRootRotation) {
-        if(pose==null)return;
-        for(int j=0;j<mesh.jointCount;j++)if(pose.has(j)) {
-            float[] t=pose.joint(j);
-            // Knee_R/L and Elbow_R/L are Epic deformation helpers, not root/bone
-            // length translations. biped_old.dat places dedicated seam vertices on
-            // those joints and source clips (notably SNEAK) animate their local Z
-            // translation to close the bent surface. Stripping those translations
-            // destroys the source hinge even when the DBC cuboid is retopologized.
-            if(!isSourceDeformationHelper(j))t[0]=t[1]=t[2]=0.0F;
-            t[7]=t[8]=t[9]=1.0F;
-            normalizeQuaternion(t);
-        }
-        if(root>=0) {
-            if(keepRootRotation&&pose.has(root)) {
-                // Keep full source quaternion. Translation and scale were already stripped.
-                normalizeQuaternion(pose.joint(root));
-            } else if(!keepRootYaw||!pose.has(root))pose.setIdentity(root);
-            else {
-                float[] r=pose.joint(root);
-                float yaw=quaternionYaw(r),half=yaw*.5F;
-                r[0]=r[1]=r[2]=0.0F;
-                r[3]=0.0F;r[4]=(float)Math.sin(half);r[5]=0.0F;r[6]=(float)Math.cos(half);
-                r[7]=r[8]=r[9]=1.0F;
-            }
-        }
-    }
-
-    private boolean isSourceDeformationHelper(int joint) {
-        if(joint<0||joint>=mesh.jointCount)return false;
-        String n=mesh.jointName[joint];
-        return "Knee_R".equals(n)||"Knee_L".equals(n)||"Elbow_R".equals(n)||"Elbow_L".equals(n);
+        ArmaturePoseMath.sanitizeDbc(mesh,root,pose,keepRootYaw,keepRootRotation);
     }
 
     private static boolean isCreativeFlight(LivingMotion motion) {
@@ -522,16 +488,7 @@ public final class LayeredAnimator {
     }
 
     private static void normalizeQuaternion(float[] t) {
-        float x=t[3],y=t[4],z=t[5],w=t[6];
-        float len2=x*x+y*y+z*z+w*w;
-        if(Float.isNaN(len2)||Float.isInfinite(len2)||len2<.000001F){t[3]=t[4]=t[5]=0.0F;t[6]=1.0F;return;}
-        float inv=1.0F/(float)Math.sqrt(len2);
-        t[3]=x*inv;t[4]=y*inv;t[5]=z*inv;t[6]=w*inv;
-    }
-
-    private static float quaternionYaw(float[] t) {
-        float x=t[3],y=t[4],z=t[5],w=t[6];
-        return (float)Math.atan2(2.0F*(w*y+x*z),1.0F-2.0F*(y*y+z*z));
+        ArmaturePoseMath.normalizeQuaternion(t);
     }
 
     private void stabilizeDbcLivingPose(AnimationPose pose,LivingMotion motion,float partial) {

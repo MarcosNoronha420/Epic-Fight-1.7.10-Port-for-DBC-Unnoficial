@@ -4,6 +4,13 @@ Baseline imutável: `v2.2.0-RC2-STABLE` / `ce1d9162003718bc8bdf0f1d94e82e32de129
 Referência upstream: `a0a1027cdd210821c0b3bcc461f1ca170303d5fc` (20.9.5).
 Veja [auditoria e evidências](ARCHITECTURE-AUDIT.md).
 
+Atualização da Fase 1: infraestrutura implementada em `feature/combat-pose-snapshot`,
+a partir da auditoria aprovada `883035e`. Consulte o
+[contrato, testes e limites de CombatPoseSnapshot](COMBAT-POSE-SNAPSHOT.md).
+A conversão final DBC/JBRA e o consumo pelo collider continuam pendentes; o gate
+de integração da Fase 2 não está liberado por esta entrega. As decisões de auditoria
+abaixo registram o estado original da Fase 0.
+
 ## Decisão desta entrega
 
 Auditoria e testes standalone em `feature/joint-local-collider`. Nenhum runtime,

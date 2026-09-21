@@ -7,6 +7,7 @@ import com.nicolas.epicfight1710.combat.FistMoveset;
 import com.nicolas.epicfight1710.combat.LocalPlayerPatch1710;
 import com.nicolas.epicfight1710.combat.ResolvedWeaponCapability;
 import com.nicolas.epicfight1710.combat.WeaponCapabilityRegistry;
+import com.nicolas.epicfight1710.combat.CombatPoseState;
 
 /**
  * Client-side bridge for Epic Fight 20.9.5 BasicAttack semantics.
@@ -29,6 +30,7 @@ public final class CombatController {
     private final CombatHitResolver hitResolver=new CombatHitResolver();
     private final AttackCadenceTracker cadence=new AttackCadenceTracker();
     private final CombatGuardRuntime guardRuntime=new CombatGuardRuntime();
+    private final CombatPoseState combatPoseState=new CombatPoseState();
     private boolean battleMode;
     private int clientTick;
     private String clipName;
@@ -47,6 +49,14 @@ public final class CombatController {
 
     public boolean battleMode(){return battleMode;}
     public int tick(){return clientTick;}
+    /** Metadata capture only. The caller owns a stable DBC/profile revision and
+     * explicit composition plan; this never updates the render Animator. */
+    public CombatPoseState.Frame captureCombatPoseFrame(long profileRevision){
+        Object posePlayer=Compat.player();
+        combatPoseState.observeContext(posePlayer,Compat.worldIdentity(posePlayer),clientTick);
+        return combatPoseState.capture(previousAttackElapsed,attackElapsed,profileRevision);
+    }
+    public long actionExecutionSerial(){return combatPoseState.actionSerial();}
     public String attackClip(){return clipName;}
     public int comboStage(){return playerPatch.comboStage();}
     public int airborneTicks(){return airborneTicks;}
@@ -72,6 +82,7 @@ public final class CombatController {
         clientTick++;
         RuntimeProfiler.INSTANCE.reportIfDue(clientTick);
         Object p=Compat.player();
+        combatPoseState.observeContext(p,Compat.worldIdentity(p),clientTick);
         if(p==null){
             airborneTicks=0;guardRuntime.clear();
             DashController.INSTANCE.cancel();dashWasDown=ClientKeyBindings.dashVanishDown();playerPatch.reset();return;
@@ -183,8 +194,8 @@ public final class CombatController {
         if(DashController.INSTANCE.active()&&recovery!=null&&RuntimeAssets.CLIPS.get(recovery)!=null)startClip(recovery,ActionType.DASH,false);
     }
 
-    private void clearAction(){clipName=null;activeProfile=null;hitResolver.reset();dash=false;actionType=ActionType.NONE;actionCapability=WeaponCapabilityRegistry.resolveActive(null);attackElapsed=previousAttackElapsed=0.0F;playbackSpeedTick=Integer.MIN_VALUE;cachedActionPlaybackSpeed=1.0F;}
-    private void startClip(String name,ActionType type,boolean isDash){clipName=name;actionType=type;dash=isDash;attackElapsed=previousAttackElapsed=0.0F;hitResolver.reset();playbackSpeedTick=Integer.MIN_VALUE;cachedActionPlaybackSpeed=1.0F;if(Boolean.getBoolean("epicfight1710.debugactions"))System.out.println("[EpicFight1710] Action clip started: "+name+" type="+type+" @ tick "+clientTick);}
+    private void clearAction(){combatPoseState.clearAction();clipName=null;activeProfile=null;hitResolver.reset();dash=false;actionType=ActionType.NONE;actionCapability=WeaponCapabilityRegistry.resolveActive(null);attackElapsed=previousAttackElapsed=0.0F;playbackSpeedTick=Integer.MIN_VALUE;cachedActionPlaybackSpeed=1.0F;}
+    private void startClip(String name,ActionType type,boolean isDash){Object posePlayer=Compat.player();combatPoseState.observeContext(posePlayer,Compat.worldIdentity(posePlayer),clientTick);combatPoseState.startAction(name);clipName=name;actionType=type;dash=isDash;attackElapsed=previousAttackElapsed=0.0F;hitResolver.reset();playbackSpeedTick=Integer.MIN_VALUE;cachedActionPlaybackSpeed=1.0F;if(Boolean.getBoolean("epicfight1710.debugactions"))System.out.println("[EpicFight1710] Action clip started: "+name+" type="+type+" @ tick "+clientTick);}
 
     public float attackAge(float partial){if(clipName==null)return -1.0F;float a=partial<0.0F?0.0F:(partial>1.0F?1.0F:partial);return previousAttackElapsed+(attackElapsed-previousAttackElapsed)*a;}
 

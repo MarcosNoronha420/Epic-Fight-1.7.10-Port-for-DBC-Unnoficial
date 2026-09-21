@@ -12,11 +12,12 @@ $auditSources = @('Clip','ClipLibrary','Mat4','SkeletonMesh') | ForEach-Object {
     'src/main/java/com/nicolas/epicfight1710/anim/' + $_ + '.java'
 }
 $auditSources += @('AnimationDefinition','AnimationPlayer','AnimationPose','AnimationLayer',
-    'AnimationCatalog','JointMask','LivingMotion','EpicSourceRegistry') | ForEach-Object {
+    'AnimationCatalog','JointMask','LivingMotion','EpicSourceRegistry','ArmaturePoseMath') | ForEach-Object {
     'src/main/java/com/nicolas/epicfight1710/anim/runtime/' + $_ + '.java'
 }
 $auditSources += @('AttackProfile','AttackPhase','AttackState','AttackStateSpectrum',
-    'ColliderDefinition','FistMoveset') | ForEach-Object {
+    'ColliderDefinition','FistMoveset','CombatPoseState','CombatPoseEvaluator',
+    'CombatPoseSnapshot','ModelToWorld') | ForEach-Object {
     'src/main/java/com/nicolas/epicfight1710/combat/' + $_ + '.java'
 }
 $auditSources += @('src/main/java/com/nicolas/epicfight1710/client/AttackCadenceTracker.java',

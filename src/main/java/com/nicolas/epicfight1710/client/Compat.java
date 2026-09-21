@@ -129,6 +129,9 @@ public final class Compat {
     }
     public static boolean guiOpen() { return init() && Reflect.get(mcScreen,minecraft)!=null; }
 
+    /** Identity only; does not initialize a renderer or change world state. */
+    public static Object worldIdentity(Object player){return player==null?null:Reflect.get(worldObj,player);}
+
     /** Minecraft instance directory used for persistent port configuration. */
     public static java.io.File gameDirectory(){
         try{init();Object v=Reflect.get(mcDataDir,minecraft);return v instanceof java.io.File?(java.io.File)v:new java.io.File(".");}
