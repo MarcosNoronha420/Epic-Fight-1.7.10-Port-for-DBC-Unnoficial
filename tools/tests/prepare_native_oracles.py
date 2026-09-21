@@ -19,7 +19,9 @@ refs = next(x for x in refs.iterdir() if x.name.lower() == "native")
 expected = {
     "DragonBlockC-v1.4.85.jar": "be8c849ab107b1126018bc5b0d0d254d751129f70f3349261f1469f0c220dc9d",
     "JBRA-Client-v1.6.52.jar": "541bc7a8063879e897a27acc3a5850b02a15f8e23ee086cb8d03a36a76e23634",
+    "JFamilyC-v1.2.18.jar": "98e396b3a144c729d42d92c42eeadbcc5e1e97779f0a5ad4367a1f417cefea95",
     "JRMCore-v1.3.51.jar": "0614265d665b6e60456d460255c1488377cad1200ad6bd9444128d835fc28946",
+    "JYearsC-v1.2.5.jar": "793ed8db158d945d387768d2cff8583e2651f70fe03f2931b6d3d63865185bf4",
 }
 for name, digest in expected.items():
     assert hashlib.sha256((refs / name).read_bytes()).hexdigest() == digest, name + " version/hash mismatch"
@@ -28,6 +30,8 @@ classes = {
     "JBRA-Client-v1.6.52.jar": ["JinRyuu/JBRA/RenderPlayerJBRA", "JinRyuu/JBRA/ModelBipedDBC", "JinRyuu/JBRA/ModelRendererJBRA"],
     "JRMCore-v1.3.51.jar": ["JinRyuu/JRMCore/entity/ModelBipedBody", "JinRyuu/JRMCore/JRMCoreHDBC", "JinRyuu/JRMCore/JRMCoreH", "JinRyuu/JRMCore/i/ExtendedPlayer", "JinRyuu/JRMCore/JRMCoreHJYC", "JinRyuu/JRMCore/JRMCoreHJFC"],
     "DragonBlockC-v1.4.85.jar": ["JinRyuu/DragonBC/common/DBCClientTickHandler", "JinRyuu/DragonBC/common/Render/ModelBipedDBC"],
+    "JYearsC-v1.2.5.jar": ["JinRyuu/JYearsC/JYearsC", "JinRyuu/JYearsC/JYearsCClient", "JinRyuu/JYearsC/JYearsCComTickH", "JinRyuu/JYearsC/JYearsCConfig"],
+    "JFamilyC-v1.2.18.jar": ["JinRyuu/FamilyC/FamilyCConfig", "JinRyuu/FamilyC/FamilyCCliTicH", "JinRyuu/FamilyC/FamilyCComJFCGen", "JinRyuu/FamilyC/FamilyCComJFCsoc", "JinRyuu/FamilyC/EntityPeople", "JinRyuu/FamilyC/RenderJFC", "JinRyuu/FamilyC/ModelBipedJFC", "JinRyuu/FamilyC/ModelJFC"],
 }
 for jar, names in classes.items():
     with zipfile.ZipFile(refs / jar) as z:

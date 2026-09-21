@@ -227,3 +227,63 @@ política de fast flight continuam sendo gates separados, mesmo após a captura.
 Não há impedimento para estudar um subconjunto sem addons; porém esta entrega
 não afirma ter implementado seu adaptador de captura ou validado suas posições
 world. Os testes numéricos existentes continuam verificando entradas explícitas.
+
+## Auditoria adicional: JYearsC 1.2.5 e JFamilyC 1.2.18
+
+Esta seção foi produzida a partir dos cinco JARs presentes em `Reference/Native/`
+(DragonBlockC 1.4.85, JBRA Client 1.6.52, JRMCore 1.3.51, JYearsC 1.2.5 e
+JFamilyC 1.2.18). Os hashes dos cinco arquivos são verificados pelo gerador
+`tools/tests/prepare_native_oracles.py`; os JARs e as fontes decompiladas ficam
+fora do Git.
+
+### JYearsC: idade e escala corporal
+
+| Operação | JAR / classe / método | Campos e ordem observados | Unidade e dependências | Reprodução pura |
+|---|---|---|---|---|
+| Ler idade do jogador | JRMCore 1.3.51 / `JRMCoreH` / `getFloat(EntityPlayer,String)` | Chave literal `JRYCAge`; leitura do dado do jogador | Anos JYearsC, `float`; não depende de câmera ou GL | O adaptador deve copiar o valor e a revisão do dado, sem chamar o tick do addon |
+| Atualizar idade | JYearsC 1.2.5 / `JYearsCComTickH` / `serverTick` | `JRMCoreH.getFloat`, `JRMCoreH.setFloat`, `JYearsCConfig.pls/pgut`; a cada dia em ticks 1, 6001, 12001, 18001 soma `0.25`; na dimensão DBC 23 soma `4.0` em múltiplos de 1000 | Efeito de servidor, com dano/mensagens/GUIs quando a vida termina; não é uma operação de captura | Nunca executar `serverTick` no snapshot. Ler apenas uma cópia autoritativa já resolvida |
+| Configuração | JYearsC 1.2.5 / `JYearsCConfig` / `init` | `pls` clamp [20, 1000000], `pgut` clamp [10, 100000] | Dias Minecraft; `pgut` é o crescimento adulto | Copiar os valores ativos e sua revisão; ausência é `UNAVAILABLE` |
+| Escala derivada | JBRA/JRMCore / `JRMCoreHJYC.JYCsizeBasedOnAge` | `yc=.5` até 5, depois `.5+(A-5)/(gu-5)*.5`, 1 acima de `gu`, mínimo `.5531915`; formas Sai/half Sai 7, 8 e 14 fixam 1; renderer usa `childScl=3-yc*2` | `A` e `gu` em anos/dias configurados; sem câmera/GL | `DbcSpatialStateSnapshot.resolveJYearsCAge` reproduz a ordem e deixa a escala indisponível se a linha/configuração faltar |
+
+`JYearsCComTickH` também envia dados de proximidade e altera estado do jogador;
+por isso não é um provider espacial. O JYearsC JAR não contém `JYearsCH.p`, que
+é a tabela de linhas nome/idade usada pelo helper do JRMCore. O estado de idade
+continua sendo um campo explícito do snapshot, não uma leitura tardia do último
+render.
+
+### JFamilyC: DNS, gênero e NPCs
+
+| Operação | JAR / classe / método | Campos e ordem observados | Limite para o player |
+|---|---|---|---|
+| Configuração familiar | JFamilyC 1.2.18 / `FamilyCConfig.init` | `cls` [20,1000000], `gut` [10,100000], `pt` [1,50], `mc` [0,10], `dcr`; `cpt` é lido com default de código 52 embora a propriedade/comentário diga 4 | São regras de família, não uma base de joint; revisão deve invalidar dados que dependam delas |
+| Alterar DNS de player | JFamilyC / `FamilyCComJFCGen` / `func_71515_b` | Usa `JRMCoreH.dnsGender`, `dnsGenderSet` e grava `jrmcDNS` no player | Comando tem side effect; não deve ser chamado pelo snapshot. A captura recebe DNS já persistido e uma revisão |
+| Modelo NPC | JFamilyC / `RenderJFC.func_77029_c` e `ModelBipedJFC.setRotationAngles` | `EntityNPC.getDNS/getDNSH/getNPCgrw`, `JRMCoreH.dnsGender+1`, `dnsBreast`; escalas/pivôs são aplicados no renderer NPC | Caminho exclusivo de `EntityNPC`; não é evidência para `RenderPlayerJBRA` nem para um player humanoide genérico |
+| Dados NPC | JFamilyC / `EntityNPC.getNPCgrw`, `getDNS`, `getDNSH` | Crescimento e DNS sincronizados por data watcher | Pode ser uma fonte futura para um adaptador de NPC, com identidade própria; não misturar cache de player |
+
+`FamilyCComJFCsoc` gera DNS de criança e executa spawn/remoção, além de usar
+campos estáticos de seleção. Esses campos são comandos e não uma fonte espacial
+determinística. O único dado reutilizável nesta fase é a semântica dos parsers
+DNS quando uma captura autoritativa fornecer uma revisão; não se copia modelo,
+textura ou offsets de `ModelJFC`.
+
+## Limite de captura e snapshot implementado
+
+`DbcSpatialStateSnapshot` é um DTO imutável em `combat` com identidade de
+player/world, tick, serial da execução, revisão geométrica, race/form/estado,
+body type, `modelVariant`, gênero/DNS revision, idade/crescimento, escalas,
+flight/apresentação e disponibilidade independente para DBC, JRMCore, JYearsC,
+JFamilyC, corpo, idade, geometria e flight. `Cache` usa identidade do player e
+compara todos esses campos; renders/câmeras não são chaves e não repetem a
+avaliação no mesmo estado. A sobrecarga de `NativeDbcSpatialProvider.evaluate`
+aceita somente snapshots utilizáveis e delega ao mesmo kernel já auditado.
+
+Estados ausentes, atrasados ou incompatíveis permanecem explicitamente
+`UNAVAILABLE` e produzem descritor inválido quando são necessários. JYearsC
+`NOT_APPLICABLE` preserva o caso comprovado sem addon com divisor 1; isso não é
+um valor inventado para um addon ausente. JFamilyC não é inferido de statics do
+renderer. Não existe ainda um adaptador live que leia Minecraft/JRMCore sem
+acoplar side effects; criar esse adaptador é a próxima fronteira segura.
+
+O snapshot não altera `FirstPersonBodyRenderer1710`, WORLD-BODY, Tool_R, JBRA,
+flight, dash, clips, timing, CPS, guard, damage ou weapon behavior. Também não
+implementa collider, sockets finais ou transformação completa para world.

@@ -66,7 +66,7 @@ public final class NativeDbcSpatialProvider {
         public String invalidReason(){return failure;}
         /** Explicit consumption check; a pure descriptor cannot observe live ticks. */
         public boolean isValidFor(Object player,Object world,int tick,long revision,long configRevision){
-            return isValid()&&state.player==player&&state.world==world&&state.tick==tick
+            return isValid()&&state!=null&&state.player==player&&state.world==world&&state.tick==tick
                 &&state.revision==revision&&this.configRevision==configRevision;
         }
         /** Always false: sockets/complete topology/physical world basis not implemented. */
@@ -128,6 +128,18 @@ public final class NativeDbcSpatialProvider {
         for(float v:outer)if(!positive(v))return new Descriptor(s,c,"Non-finite/degenerate native scale",null,null);
         for(float[] b:parts)for(float v:b)if(!finite(v))return new Descriptor(s,c,"Non-finite native part basis",null,null);
         return new Descriptor(s,c,null,outer,parts);
+    }
+
+    /**
+     * Consume the authoritative per-player snapshot without consulting any
+     * renderer state.  Missing or stale inputs become an invalid descriptor;
+     * no native default is synthesized here.
+     */
+    public Descriptor evaluate(DbcSpatialStateSnapshot snapshot,Config c){
+        if(snapshot==null)return new Descriptor(null,c,"Missing spatial snapshot",null,null);
+        State state=snapshot.toProviderState();
+        if(state==null)return new Descriptor(null,c,"Snapshot data unavailable or unsupported",null,null);
+        return evaluate(state,c);
     }
     private static float[] basis(float x,float y,float z,float tx,float ty,float tz){return new float[]{x,y,z,tx,ty,tz};}
     private static boolean entry(float[][] a,int race,int form){return a!=null&&race<a.length&&a[race]!=null&&form<a[race].length&&positive(a[race][form]);}

@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 if ($LASTEXITCODE -ne 0) { throw 'Native hash/decompilation/oracle preparation failed' }
 New-Item -ItemType Directory -Force build/native-oracle/classes | Out-Null
 & $Java -jar $CompilerJar -1.8 -encoding UTF-8 -d build/native-oracle/classes `
+    src/main/java/com/nicolas/epicfight1710/combat/DbcSpatialStateSnapshot.java `
     src/main/java/com/nicolas/epicfight1710/combat/NativeDbcSpatialProvider.java `
     build/native-oracle/NativeBodyOracle.java build/native-oracle/NativeFormulaOracle.java `
     tools/tests/NativeDbcSpatialProviderTest.java
