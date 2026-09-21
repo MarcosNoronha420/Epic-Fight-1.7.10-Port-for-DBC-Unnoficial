@@ -29,3 +29,7 @@ desktop.ini
 *.log
 crash-reports/
 logs/
+
+# Local native reverse-engineering references (never publish)
+/reference/native/
+/[Rr]eference/[Nn]ative/
