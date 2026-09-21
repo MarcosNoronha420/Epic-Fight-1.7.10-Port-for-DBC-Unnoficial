@@ -1,0 +1,31 @@
+# Gradle / ForgeGradle
+.gradle/
+build/
+out/
+classes/
+run/
+eclipse/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# Java
+*.class
+hs_err_pid*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Generated artifacts
+*.jar
+*.log
+crash-reports/
+logs/

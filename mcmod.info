@@ -1,0 +1,18 @@
+[
+  {
+    "modid": "epicfight1710",
+    "name": "Epic Fight 1.7.10 Port Runtime",
+    "description": "Epic Fight compatibility runtime for Minecraft 1.7.10 + DBC/JRMCore/JBRA. 2.2.0-RC2 begins the structural runtime split: spatial OBB collider resolution with per-target hit-window memory, isolated attack cadence and guard runtimes, tick-stable DBC/JRMCore snapshots, duplicate final-pose suppression with visual-revision invalidation, lower-level skinning matrix reuse and opt-in subsystem profiling. The accepted WORLD-BODY first-person framing, Tool_R behavior, DBC flight/dash semantics and protected core transformer are preserved.",
+    "version": "2.2.0-RC2",
+    "mcversion": "1.7.10",
+    "url": "",
+    "updateUrl": "",
+    "authorList": [
+      "Nicolas port project"
+    ],
+    "credits": "Epic Fight original project by Yesman. This independent 1.7.10 compatibility port is not an official Epic Fight release.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

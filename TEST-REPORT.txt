@@ -1,0 +1,85 @@
+EpicFight1710-Port 2.2.0-RC2 — structural refactor test report
+Generated: 2026-09-20
+
+STATUS
+- Static/package validation: PASS
+- Java 8 class-major validation: PASS (107/107 project classes = major 52)
+- Unit/architecture tests: PASS
+- Real Forge 1.7.10 visual/combat/frametime acceptance: PENDING user test
+
+BASELINE / PROTECTED CONTRACT
+- Functional baseline: EpicFight1710-Port-2.1.2-RC1.
+- EpicFightTransformer SHA-256 remains exactly 01d8c1986e23fe63661d89a0accbe36fd19dc66a656c0d4fe492fbdc26429e4c.
+- FirstPersonBodyRenderer1710, FirstPersonWeaponRenderer, DbcFlightStateMachine, DbcFlightRenderHook and DashController are byte-identical to 2.1.2-RC1.
+- weapon_types.json, clips.dat, biped.dat and biped_old.dat are byte-identical to 2.1.2-RC1.
+- WORLD-BODY visual calibration is unchanged.
+
+2.2.0-RC2 STARTUP REGRESSION FIX
+-------------------------------
+PASS RuntimeProfiler static initialization order fixed: NAMES/ENABLED are initialized before INSTANCE.
+PASS RuntimeProfiler initializes with profiler disabled and with -Depicfight1710.profiler=true.
+PASS This directly covers the RC1 pre-menu crash (ExceptionInInitializerError -> NPE in RuntimeProfiler.<init>).
+
+2.2.0-RC2 STRUCTURAL CHANGES
+1. CombatHitResolver
+   - ColliderDefinition is executable runtime hit data instead of unused metadata.
+   - Sweeps authored OBB volume using collider.count samples across the current tick transform.
+   - Uses per-target × hit-window identity memory, allowing one attack window to hit multiple entities without re-hitting the same entity in that window.
+   - Keeps StateSpectrum/action clock as the timing authority and delegates final damage through the existing Minecraft/DBC attack path.
+   - RC1 collider anchoring is interpolated player-view space. Joint-local Tool_R/Hand_R collider sampling is the next parity step and is NOT claimed complete here.
+
+2. CombatController decomposition
+   - CombatGuardRuntime owns DBC guard state, two-tick release hysteresis and guard-hit reactions.
+   - AttackCadenceTracker owns recent click cadence and source-style fast-fist playback scaling.
+   - CombatController remains the orchestrator for action selection/clock and dash input edge handling in this RC.
+
+3. DBC/JRMCore state lifetime
+   - DbcClientState.TickSnapshot caches stable per-tick blocking/Ki/floating/ground/flying/speed state.
+   - Live JBRA render evidence remains render-sensitive.
+   - visualRevision invalidates same-tick pose reuse when flight presentation changes during rendering.
+
+4. Animator / pose reuse
+   - PoseEngine suppresses exact duplicate final-pose composition for the same player/tick/partial/render state.
+   - LayeredAnimator exposes poseSerial for downstream geometry caches.
+
+5. Skinning hot paths
+   - SkinnedPlayerRenderer caches skinning by poseSerial.
+   - The skin matrix array is captured once per render; normal emission no longer asks PoseEngine.skinMatrices() from inside geometry loops.
+   - ModelRendererSkinHook measures the live native JBRA skin dispatch when profiling is enabled.
+
+6. Diagnostics
+   - RuntimeProfiler is opt-in with JVM flag -Depicfight1710.profiler=true.
+   - Slots: Animator, collider, DBC-state, JBRA-skin, first-person and combat.
+   - No animation-rate reduction or visual simplification is used as an optimization.
+
+TESTS
+PASS AttackCadence220Test: 6.7 CPS=1.0x, 8=1.176x, 10=1.471x, 13.6=2.0x, 20=2.0x.
+PASS CombatCollider220Test: OBB/AABB center, inflation, reject axes and rotated-basis cases.
+PASS CombatTiming200Test: RELENTLESS_COMBO interval sweep captures all 8/8 hit windows while point sampling captures only 4/8.
+PASS WeaponRegistry200Test: 8 weapon types, 7 item rules, 38 profiles, registry generation reload path.
+PASS StyleMount200Test: ONE_HAND -> MOUNT resolution and finite StateSpectrum chain window.
+PASS EmbeddedLoad200Test: 20-joint armature, 260 modern vertices, 138 legacy vertices, 242 clips; weapon registry loads.
+PASS HotReload200Test: external weapon JSON reload increments registry generation and applies a changed item rule without rebuild.
+PASS ZIP integrity / no duplicate entries.
+PASS no compile-only net.minecraft / Forge / FML / LWJGL / ASM stubs packaged.
+PASS ClientHooks keeps runtime-visible Forge @SubscribeEvent annotations.
+PASS no obsolete FirstPersonCamera1710 / FirstPersonTuning / VanillaFirstPersonItemRenderer classes.
+PASS FirstPersonBodyRenderer has no RenderManager.renderEntityStatic or full renderEquippedItemsJBRA call.
+PASS protected 2.1.2 visual/gameplay binaries/assets are byte-identical.
+
+STANDALONE TEST NOTE
+EmbeddedLoad200Test and HotReload200Test intentionally run outside Minecraft/Forge. Compat logs ClassNotFoundException for net.minecraft.client.Minecraft, then uses its standalone fallback game directory; both tests complete PASS. This is expected and is not a packaged runtime error.
+
+REAL-CLIENT ACCEPTANCE CHECKLIST
+1. Battle Mode OFF/ON in the same scene with FPS cap raised; compare frametime and average FPS.
+2. Idle/walk/run/jump/turn and weapon stance transitions.
+3. Fist combo including RELENTLESS_COMBO; test one target and multiple mobs inside one swing volume.
+4. Guard on/off and guard-hit reaction.
+5. Vanish Dash.
+6. Normal hover/flight and sprint/fast flight in third and first person.
+7. First-person straight, 30–45 degrees down and full down; framing must match 2.1.2.
+8. Held weapon / Tool_R and JBRA forms, hair, face, clothing/head layers.
+9. Optional profiler run with -Depicfight1710.profiler=true; send latest.log for subsystem µs/call evidence.
+
+PROMOTION RULE
+Do not call 2.2 stable until the real client confirms visual parity, multi-target combat behavior and frametime. Static validation cannot prove those three properties.

@@ -1,0 +1,243 @@
+{
+  "format": 1,
+  "weaponTypes": [
+    {
+      "id": "epicfight:fist",
+      "category": "FIST",
+      "defaultStyle": "COMMON",
+      "offhand": true,
+      "styles": [
+        {
+          "style": "COMMON",
+          "collider": {"count":1,"centerX":0.0,"centerY":0.0,"centerZ":-0.45,"sizeX":0.55,"sizeY":0.55,"sizeZ":0.85,"range":3.25,"facing":0.28},
+          "air": "fist_airslash",
+          "guardHit": "guard_dualsword_hit",
+          "living": {"block":"guard_dualsword"}
+        }
+      ]
+    },
+    {
+      "id": "epicfight:sword",
+      "category": "SWORD",
+      "defaultStyle": "ONE_HAND",
+      "offhand": true,
+      "styles": [
+        {
+          "style": "ONE_HAND",
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-0.85,"sizeX":0.35,"sizeY":0.35,"sizeZ":1.25,"range":3.65,"facing":0.24},
+          "combo": [
+            {"clip":"sword_auto1","startup":0.00,"activeEnd":0.10,"chainOpen":0.40,"nextCombo":1},
+            {"clip":"sword_auto2","startup":0.05,"activeEnd":0.15,"chainOpen":0.40,"nextCombo":2},
+            {"clip":"sword_auto3","startup":0.05,"activeEnd":0.15,"chainOpen":0.60,"nextCombo":3}
+          ],
+          "dash": {"clip":"sword_dash","startup":0.10,"activeEnd":0.20,"chainOpen":9999.0,"range":4.15,"facing":0.18},
+          "air": "sword_airslash",
+          "guardHit": "guard_sword_hit",
+          "innateSkill": "sweeping_edge",
+          "living": {"block":"guard_sword"}
+        },
+        {
+          "style": "MOUNT",
+          "conditions": [{"type":"riding","value":true}],
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-0.95,"sizeX":0.4,"sizeY":0.4,"sizeZ":1.4,"range":4.10,"facing":0.15},
+          "mountAttack": {"clip":"sword_mount_attack","startup":0.10,"activeEnd":0.22,"chainOpen":0.50,"range":4.10,"facing":0.15},
+          "living": {"block":"guard_sword"}
+        }
+      ]
+    },
+    {
+      "id": "epicfight:uchigatana",
+      "category": "UCHIGATANA",
+      "defaultStyle": "TWO_HAND",
+      "offhand": false,
+      "styles": [
+        {
+          "style": "TWO_HAND",
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-0.95,"sizeX":0.32,"sizeY":0.32,"sizeZ":1.35,"range":3.85,"facing":0.22},
+          "combo": [
+            {"clip":"uchigatana_auto1","startup":0.15,"activeEnd":0.25,"chainOpen":0.30,"nextCombo":1},
+            {"clip":"uchigatana_auto2","startup":0.20,"activeEnd":0.30,"chainOpen":0.30,"nextCombo":2},
+            {"clip":"uchigatana_auto3","startup":0.15,"activeEnd":0.25,"chainOpen":0.50,"nextCombo":3}
+          ],
+          "dash": {"clip":"uchigatana_dash","startup":0.05,"activeEnd":0.15,"chainOpen":9999.0,"range":4.15,"facing":0.18},
+          "air": "uchigatana_airslash",
+          "guardHit": "guard_uchigatana_hit",
+          "innateSkill": "battojutsu",
+          "living": {"idle":"hold_uchigatana","walk":"walk_uchigatana","run":"run_uchigatana","block":"guard_uchigatana"}
+        },
+        {
+          "style": "SHEATH",
+          "conditions": [{"type":"never","value":true}],
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-0.95,"sizeX":0.32,"sizeY":0.32,"sizeZ":1.35,"range":3.95,"facing":0.20},
+          "combo": [{"clip":"uchigatana_sheath_auto","startup":0.12,"activeEnd":0.24,"chainOpen":0.55,"nextCombo":0}],
+          "dash": {"clip":"uchigatana_sheath_dash","startup":0.08,"activeEnd":0.20,"chainOpen":9999.0,"range":4.25,"facing":0.16},
+          "air": "uchigatana_sheath_airslash",
+          "living": {"idle":"hold_uchigatana_sheath","walk":"walk_uchigatana_sheath","run":"run_uchigatana_sheath","block":"guard_uchigatana"}
+        },
+        {
+          "style": "MOUNT",
+          "conditions": [{"type":"riding","value":true}],
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-1.0,"sizeX":0.35,"sizeY":0.35,"sizeZ":1.4,"range":4.10,"facing":0.15},
+          "mountAttack": {"clip":"sword_mount_attack","startup":0.10,"activeEnd":0.22,"chainOpen":0.50,"range":4.10,"facing":0.15},
+          "living": {"block":"guard_uchigatana"}
+        }
+      ]
+    },
+    {
+      "id": "epicfight:longsword",
+      "category": "LONGSWORD",
+      "defaultStyle": "TWO_HAND",
+      "offhand": false,
+      "styles": [
+        {
+          "style": "TWO_HAND",
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-1.05,"sizeX":0.42,"sizeY":0.42,"sizeZ":1.55,"range":4.15,"facing":0.18},
+          "combo": [
+            {"clip":"longsword_auto1","startup":0.25,"activeEnd":0.35,"chainOpen":0.50,"nextCombo":1},
+            {"clip":"longsword_auto2","startup":0.20,"activeEnd":0.30,"chainOpen":0.45,"nextCombo":2},
+            {"clip":"longsword_auto3","startup":0.20,"activeEnd":0.30,"chainOpen":1.00,"nextCombo":3}
+          ],
+          "dash": {"clip":"longsword_dash","startup":0.25,"activeEnd":0.40,"chainOpen":9999.0,"range":4.55,"facing":0.12},
+          "air": "longsword_airslash",
+          "guardHit": "guard_longsword_hit",
+          "innateSkill": "liechtenauer",
+          "living": {"idle":"hold_longsword","walk":"walk_longsword","run":"run_longsword","block":"guard_longsword"}
+        },
+        {
+          "style": "OCHS",
+          "conditions": [{"type":"never","value":true}],
+          "collider": {"count":3,"centerX":0.0,"centerY":0.0,"centerZ":-1.05,"sizeX":0.42,"sizeY":0.42,"sizeZ":1.55,"range":4.20,"facing":0.17},
+          "combo": [
+            {"clip":"longsword_liechtenauer_auto1","startup":0.20,"activeEnd":0.34,"chainOpen":0.52,"nextCombo":1},
+            {"clip":"longsword_liechtenauer_auto2","startup":0.18,"activeEnd":0.32,"chainOpen":0.48,"nextCombo":2},
+            {"clip":"longsword_liechtenauer_auto3","startup":0.18,"activeEnd":0.30,"chainOpen":0.65,"nextCombo":3}
+          ],
+          "living": {"idle":"hold_liechtenauer","walk":"walk_liechtenauer","run":"run_longsword","block":"guard_longsword"}
+        }
+      ]
+    },
+    {
+      "id": "epicfight:greatsword",
+      "category": "GREATSWORD",
+      "defaultStyle": "TWO_HAND",
+      "offhand": false,
+      "styles": [
+        {
+          "style": "TWO_HAND",
+          "collider": {"count":4,"centerX":0.0,"centerY":0.0,"centerZ":-1.15,"sizeX":0.55,"sizeY":0.55,"sizeZ":1.75,"range":4.35,"facing":0.12},
+          "combo": [
+            {"clip":"greatsword_auto1","startup":0.15,"activeEnd":0.25,"chainOpen":0.65,"nextCombo":1},
+            {"clip":"greatsword_auto2","startup":0.50,"activeEnd":0.65,"chainOpen":1.50,"nextCombo":2}
+          ],
+          "dash": {"clip":"greatsword_dash","startup":0.35,"activeEnd":0.60,"chainOpen":9999.0,"range":4.65,"facing":0.08},
+          "air": "greatsword_airslash",
+          "guardHit": "guard_greatsword_hit",
+          "innateSkill": "greatsword_slam",
+          "living": {"idle":"hold_greatsword","walk":"walk_greatsword","run":"run_greatsword","block":"guard_greatsword"}
+        }
+      ]
+    },
+    {
+      "id": "epicfight:axe",
+      "category": "AXE",
+      "defaultStyle": "ONE_HAND",
+      "offhand": true,
+      "styles": [
+        {
+          "style": "ONE_HAND",
+          "collider": {"count":2,"centerX":0.0,"centerY":0.0,"centerZ":-0.85,"sizeX":0.55,"sizeY":0.55,"sizeZ":1.15,"range":4.00,"facing":0.16},
+          "combo": [
+            {"clip":"axe_auto1","startup":0.05,"activeEnd":0.15,"chainOpen":0.70,"nextCombo":1},
+            {"clip":"axe_auto2","startup":0.05,"activeEnd":0.15,"chainOpen":0.85,"nextCombo":2}
+          ],
+          "dash": {"clip":"axe_dash","startup":0.40,"activeEnd":0.46,"chainOpen":9999.0,"range":4.35,"facing":0.12},
+          "air": "axe_airslash",
+          "guardHit": "guard_sword_hit",
+          "innateSkill": "guillotine",
+          "living": {"block":"guard_sword"}
+        }
+      ]
+    },
+    {
+      "id": "epicfight:dagger",
+      "category": "DAGGER",
+      "defaultStyle": "ONE_HAND",
+      "offhand": true,
+      "styles": [
+        {
+          "style": "ONE_HAND",
+          "collider": {"count":2,"centerX":0.0,"centerY":0.0,"centerZ":-0.55,"sizeX":0.25,"sizeY":0.25,"sizeZ":0.75,"range":3.15,"facing":0.30},
+          "combo": [
+            {"clip":"dagger_auto1","startup":0.05,"activeEnd":0.15,"chainOpen":0.25,"nextCombo":1},
+            {"clip":"dagger_auto2","startup":0.00,"activeEnd":0.10,"chainOpen":0.25,"nextCombo":2},
+            {"clip":"dagger_auto3","startup":0.20,"activeEnd":0.25,"chainOpen":0.40,"nextCombo":3}
+          ],
+          "dash": {"clip":"dagger_dash","startup":0.20,"activeEnd":0.25,"chainOpen":9999.0,"range":3.65,"facing":0.22},
+          "air": "dagger_airslash",
+          "innateSkill": "eviscerate",
+          "living": {}
+        },
+        {
+          "style": "TWO_HAND",
+          "conditions": [{"type":"never","value":true}],
+          "collider": {"count":2,"centerX":0.0,"centerY":0.0,"centerZ":-0.55,"sizeX":0.25,"sizeY":0.25,"sizeZ":0.75,"range":3.30,"facing":0.25},
+          "combo": [
+            {"clip":"dagger_dual_auto1","startup":0.05,"activeEnd":0.16,"chainOpen":0.32,"nextCombo":1},
+            {"clip":"dagger_dual_auto2","startup":0.05,"activeEnd":0.16,"chainOpen":0.32,"nextCombo":2},
+            {"clip":"dagger_dual_auto3","startup":0.08,"activeEnd":0.20,"chainOpen":0.38,"nextCombo":3},
+            {"clip":"dagger_dual_auto4","startup":0.10,"activeEnd":0.22,"chainOpen":0.50,"nextCombo":4}
+          ],
+          "dash": {"clip":"dagger_dual_dash","startup":0.12,"activeEnd":0.24,"chainOpen":9999.0,"range":3.80,"facing":0.20},
+          "living": {"idle":"hold_dual","run":"run_dual","block":"guard_dualsword"},
+          "guardHit":"guard_dualsword_hit"
+        }
+      ]
+    },
+    {
+      "id": "epicfight:spear_twohand",
+      "category": "SPEAR",
+      "defaultStyle": "TWO_HAND",
+      "offhand": false,
+      "styles": [
+        {
+          "style": "TWO_HAND",
+          "collider": {"count":4,"centerX":0.0,"centerY":0.0,"centerZ":-1.25,"sizeX":0.28,"sizeY":0.28,"sizeZ":1.95,"range":4.85,"facing":0.14},
+          "combo": [
+            {"clip":"spear_twohand_auto1","startup":0.20,"activeEnd":0.30,"chainOpen":0.45,"nextCombo":1},
+            {"clip":"spear_twohand_auto2","startup":0.20,"activeEnd":0.30,"chainOpen":0.70,"nextCombo":2}
+          ],
+          "dash": {"clip":"spear_dash","startup":0.30,"activeEnd":0.40,"chainOpen":9999.0,"range":5.15,"facing":0.10},
+          "air": "spear_twohand_airslash",
+          "guardHit": "guard_spear_hit",
+          "innateSkill": "heartpiercer",
+          "living": {"idle":"hold_spear","walk":"walk_spear","run":"run_spear","block":"guard_spear"}
+        },
+        {
+          "style": "ONE_HAND",
+          "conditions": [{"type":"never","value":true}],
+          "collider": {"count":4,"centerX":0.0,"centerY":0.0,"centerZ":-1.20,"sizeX":0.28,"sizeY":0.28,"sizeZ":1.90,"range":4.65,"facing":0.15},
+          "combo": [{"clip":"spear_onehand_auto","startup":0.18,"activeEnd":0.30,"chainOpen":0.62,"nextCombo":0}],
+          "dash": {"clip":"spear_dash","startup":0.30,"activeEnd":0.40,"chainOpen":9999.0,"range":5.00,"facing":0.10},
+          "air": "spear_onehand_airslash",
+          "living": {"idle":"hold_spear","walk":"walk_spear","run":"run_spear","block":"guard_spear"}
+        },
+        {
+          "style": "MOUNT",
+          "conditions": [{"type":"riding","value":true}],
+          "collider": {"count":4,"centerX":0.0,"centerY":0.0,"centerZ":-1.30,"sizeX":0.30,"sizeY":0.30,"sizeZ":2.0,"range":5.15,"facing":0.08},
+          "mountAttack": {"clip":"spear_mount_attack","startup":0.15,"activeEnd":0.30,"chainOpen":0.60,"range":5.15,"facing":0.08},
+          "living": {"idle":"hold_spear","walk":"walk_spear","run":"run_spear","block":"guard_spear"}
+        }
+      ]
+    }
+  ],
+  "itemRules": [
+    {"type":"epicfight:uchigatana","match":["katana","uchigatana"]},
+    {"type":"epicfight:greatsword","match":["zsword","greatsword","great_sword"]},
+    {"type":"epicfight:longsword","match":["longsword","long_sword"]},
+    {"type":"epicfight:dagger","match":["dagger","knife"]},
+    {"type":"epicfight:spear_twohand","match":["spear","lance","trident"]},
+    {"type":"epicfight:axe","match":["itemaxe","toolaxe",".axe"]},
+    {"type":"epicfight:sword","match":["bravesword","itemsword","swordbase","itemweapon","sword"]}
+  ]
+}
