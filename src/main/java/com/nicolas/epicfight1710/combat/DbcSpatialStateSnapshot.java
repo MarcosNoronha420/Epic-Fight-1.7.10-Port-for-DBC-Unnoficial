@@ -24,6 +24,7 @@ public final class DbcSpatialStateSnapshot {
     public final Availability playerAvailability, worldAvailability, dbcAvailability;
     public final Availability jrmCoreAvailability, jYearsCAvailability, jFamilyCAvailability;
     public final Availability bodyAvailability, ageAvailability, geometryAvailability, flightAvailability;
+    /** transformationState is JRMCore data(player,2)[0]; nativeState is ModelBipedBody.y. */
     public final int race, form, transformationState, constitution, release, nativeState, powerType;
     public final int bodyType, modelVariant, gender;
     public final boolean child, sneaking, divine, spectator;
@@ -32,11 +33,18 @@ public final class DbcSpatialStateSnapshot {
     public final BodyPresentation presentation;
     /** A stable caller-provided revision/digest of DNS data; raw DNS is not copied. */
     public final String dnsRevision;
+    /** Monotonic identity inside the cache for this player's current spatial state. */
+    public final long spatialRevision;
+    // The data is immutable; this private token is only the cache's liveness
+    // marker, so an older object can be recognized as stale without mutating
+    // any snapshot field or depending on a caller-provided hash.
+    private final CurrentRevision currentRevision;
     private final String failure;
 
-    private DbcSpatialStateSnapshot(Input in) {
+    private DbcSpatialStateSnapshot(Input in,CurrentRevision current,long spatialRevision) {
         playerIdentity=in.playerIdentity;worldIdentity=in.worldIdentity;gameTick=in.gameTick;
         actionRevision=in.actionRevision;geometryRevision=in.geometryRevision;
+        this.currentRevision=current;this.spatialRevision=spatialRevision;
         playerAvailability=in.playerAvailability;worldAvailability=in.worldAvailability;
         dbcAvailability=in.dbcAvailability;jrmCoreAvailability=in.jrmCoreAvailability;
         jYearsCAvailability=in.jYearsCAvailability;jFamilyCAvailability=in.jFamilyCAvailability;
@@ -54,7 +62,9 @@ public final class DbcSpatialStateSnapshot {
     /** Captures only the already-resolved input object. It has no side effects. */
     public static DbcSpatialStateSnapshot capture(Input input) {
         if(input==null)throw new IllegalArgumentException("Input required");
-        return new DbcSpatialStateSnapshot(input);
+        CurrentRevision current=new CurrentRevision();
+        current.value=1;
+        return new DbcSpatialStateSnapshot(input,current,1);
     }
 
     public boolean isValid() { return failure==null; }
@@ -62,7 +72,7 @@ public final class DbcSpatialStateSnapshot {
 
     /** True only when the partial native provider can consume this snapshot. */
     public boolean isUsableForNativeProvider() {
-        return isValid() && playerAvailability==Availability.AVAILABLE
+        return isValid() && isCurrentRevision() && playerAvailability==Availability.AVAILABLE
             && worldAvailability==Availability.AVAILABLE && dbcAvailability==Availability.AVAILABLE
             && jrmCoreAvailability==Availability.AVAILABLE
             && bodyAvailability==Availability.AVAILABLE && geometryAvailability==Availability.AVAILABLE
@@ -79,7 +89,14 @@ public final class DbcSpatialStateSnapshot {
     /** Identity/revision check used by combat consumers before retaining a sample. */
     public boolean isValidFor(Object player,Object world,int tick,long revision,long geometryRev) {
         return isValid() && playerIdentity==player && worldIdentity==world && gameTick==tick
-            && actionRevision==revision && geometryRevision==geometryRev;
+            && actionRevision==revision && geometryRevision==geometryRev && isCurrentRevision();
+    }
+
+    /** True when this object is still the cache's current spatial sample. */
+    public boolean isCurrentIn(Cache cache) { return cache!=null&&cache.isCurrent(this); }
+
+    private boolean isCurrentRevision() {
+        return currentRevision!=null&&currentRevision.value==spatialRevision;
     }
 
     /** Convert only a proven, complete partial input to the existing math kernel. */
@@ -94,16 +111,17 @@ public final class DbcSpatialStateSnapshot {
 
     /** Exact pure age equation observed in JRMCoreHJYC.JYCsizeBasedOnAge. */
     public static AgeScale resolveJYearsCAge(Availability addon,boolean rowPresent,float age,int growth,
-                                             int race,int nativeState,int form) {
+                                             int race,int powerType,int transformationState) {
         if(addon==Availability.NOT_APPLICABLE)
             return new AgeScale(Availability.NOT_APPLICABLE,Float.NaN,Float.NaN,1.0F,1.0F,"JYearsC not installed");
         if(addon!=Availability.AVAILABLE||!rowPresent||!finite(age)||age<0||growth<=5)
             return new AgeScale(Availability.UNAVAILABLE,Float.NaN,Float.NaN,Float.NaN,Float.NaN,"JYearsC age row/config unavailable");
         boolean sai=(race==1||race==2);
-        // JRMCoreHJYC derives State from data(player,2), not from the cosmetic
-        // form id.  The captured nativeState is therefore the only exception
-        // selector; form remains part of the snapshot identity separately.
-        boolean fixed=sai&&(nativeState==7||nativeState==8||nativeState==14);
+        // JRMCoreHJYC derives State from data(player,2)[0].  Its own gate
+        // first maps chakra or human data to zero; ModelBipedBody.y/nativeState
+        // and the cosmetic form id are deliberately not consulted here.
+        int selectedState=(powerType==2||race==0)?0:transformationState;
+        boolean fixed=sai&&(selectedState==7||selectedState==8||selectedState==14);
         float yc;
         if(fixed||age>growth)yc=1.0F;
         else if(age<=5.0F)yc=.5F;
@@ -131,19 +149,35 @@ public final class DbcSpatialStateSnapshot {
     /** Single-thread game-loop cache. Identity keys prevent player/world mixing. */
     public static final class Cache {
         private final IdentityHashMap<Object,DbcSpatialStateSnapshot> byPlayer=new IdentityHashMap<Object,DbcSpatialStateSnapshot>();
+        private final IdentityHashMap<Object,CurrentRevision> revisions=new IdentityHashMap<Object,CurrentRevision>();
         private long evaluations;
         public DbcSpatialStateSnapshot capture(Input input) {
             if(input==null||input.playerIdentity==null)throw new IllegalArgumentException("Player input required");
             DbcSpatialStateSnapshot old=byPlayer.get(input.playerIdentity);
             if(old!=null&&old.matches(input))return old;
-            DbcSpatialStateSnapshot fresh=DbcSpatialStateSnapshot.capture(input);
+            CurrentRevision current=revisions.get(input.playerIdentity);
+            if(current==null){current=new CurrentRevision();revisions.put(input.playerIdentity,current);}
+            current.value=current.value==Long.MAX_VALUE?1:current.value+1;
+            DbcSpatialStateSnapshot fresh=new DbcSpatialStateSnapshot(input,current,current.value);
             byPlayer.put(input.playerIdentity,fresh);evaluations++;return fresh;
         }
         public long completeEvaluations(){return evaluations;}
         public DbcSpatialStateSnapshot get(Object player){return byPlayer.get(player);}
-        public void invalidate(Object player){byPlayer.remove(player);}
-        public void clear(){byPlayer.clear();}
+        public long currentSpatialRevision(Object player){
+            CurrentRevision current=revisions.get(player);return current==null?0:current.value;
+        }
+        public boolean isCurrent(DbcSpatialStateSnapshot snapshot){
+            return snapshot!=null&&byPlayer.get(snapshot.playerIdentity)==snapshot&&snapshot.isCurrentRevision();
+        }
+        public void invalidate(Object player){
+            byPlayer.remove(player);CurrentRevision current=revisions.get(player);if(current!=null)current.value=current.value==Long.MAX_VALUE?1:current.value+1;
+        }
+        public void clear(){
+            byPlayer.clear();for(CurrentRevision current:revisions.values())current.value=current.value==Long.MAX_VALUE?1:current.value+1;
+        }
     }
+
+    private static final class CurrentRevision { long value; }
 
     private boolean matches(Input in) {
         return playerIdentity==in.playerIdentity&&worldIdentity==in.worldIdentity&&gameTick==in.gameTick
@@ -180,6 +214,7 @@ public final class DbcSpatialStateSnapshot {
         public static Input builder(){return new Input();}
         public Input context(Object player,Object world,int tick,long revision){playerIdentity=player;worldIdentity=world;gameTick=tick;actionRevision=revision;playerAvailability=player==null?Availability.UNAVAILABLE:Availability.AVAILABLE;worldAvailability=world==null?Availability.UNAVAILABLE:Availability.AVAILABLE;return this;}
         public Input geometry(long revision,Availability status){geometryRevision=revision;geometryAvailability=require(status);return this;}
+        /** nativeState is visual/native y; it is never used by JYearsC age math. */
         public Input dbc(int race,int form,int transformationState,int release,int nativeState,int powerType){this.race=race;this.form=form;this.transformationState=transformationState;this.release=release;this.nativeState=nativeState;this.powerType=powerType;dbcAvailability=Availability.AVAILABLE;return this;}
         public Input constitution(int value){constitution=value;return this;}
         public Input body(int bodyType,int modelVariant,int gender,boolean child,boolean sneaking,boolean divine,boolean spectator,float modelPixelScale){this.bodyType=bodyType;this.modelVariant=modelVariant;this.gender=gender;this.child=child;this.sneaking=sneaking;this.divine=divine;this.spectator=spectator;this.modelPixelScale=modelPixelScale;bodyAvailability=Availability.AVAILABLE;return this;}

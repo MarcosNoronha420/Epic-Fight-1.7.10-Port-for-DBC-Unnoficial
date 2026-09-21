@@ -50,7 +50,17 @@ public final class DbcSpatialStateSnapshotTest {
         check(!first.isValidFor(PLAYER_A,WORLD_A,100,10,8),"geometry revision invalidation");
 
         // DNS, age, form and flight are all part of the cache key/state revision.
-        check(c.capture(input(PLAYER_A,WORLD_A,100,10,7,"dns-new"))!=first,"DNS revision not reused");
+        DbcSpatialStateSnapshot changed=c.capture(input(PLAYER_A,WORLD_A,100,10,7,"dns-new"));
+        check(changed!=first,"DNS revision not reused");
+        check(changed.spatialRevision>first.spatialRevision,"spatial revision advances on state change");
+        check(!first.isValidFor(PLAYER_A,WORLD_A,100,10,7),"old snapshot becomes stale after DNS change");
+        check(!first.isCurrentIn(c)&&c.isCurrent(changed),"cache identifies only the current spatial snapshot");
+        check(!new NativeDbcSpatialProvider().evaluate(first,cfg).isValid(),"provider rejects stale spatial snapshot");
+        check(changed.isValidFor(PLAYER_A,WORLD_A,100,10,7),"new snapshot remains current with same external revisions");
+        Input changedState=input(PLAYER_A,WORLD_A,100,10,7,"same-envelope").dbc(1,3,0,50,1,1).body(0,2,0,false,false,false,false,.0625F).bodyScale(1.0F);
+        DbcSpatialStateSnapshot changedStateSnapshot=c.capture(changedState);
+        check(changedStateSnapshot!=changed,"race/form/modelVariant differences get a new identity");
+        check(!changed.isCurrentIn(c),"previous state is stale after race/form/model change");
         Input form=input(PLAYER_A,WORLD_A,100,11,7,"form").dbc(0,3,3,50,1,1);
         check(c.capture(form).form==3,"form captured");
         Input fast=input(PLAYER_A,WORLD_A,100,12,7,"fast").flight(FlightState.FAST,BodyPresentation.PRONE);
@@ -83,8 +93,24 @@ public final class DbcSpatialStateSnapshotTest {
         check(young.childScale==3.0F-young.normalizedAge*2.0F,"JYearsC childScl equation");
         AgeScale adult=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,52,52,0,1,0);
         check(adult.normalizedAge==1.0F&&adult.childScale==1.0F,"JYearsC adult scale");
-        AgeScale oozaru=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,1,7,7);
-        check(oozaru.normalizedAge==1.0F,"JYearsC Sai form exception");
+        // JYearsC state comes from data(player,2)[0], independently of
+        // ModelBipedBody.y/nativeState and independently of the form id.
+        Input stateA=input(PLAYER_A,WORLD_A,100,30,7,"state-a").dbc(1,3,7,50,1,1);
+        DbcSpatialStateSnapshot stateASnapshot=DbcSpatialStateSnapshot.capture(stateA);
+        check(stateASnapshot.transformationState==7&&stateASnapshot.nativeState==1&&stateASnapshot.form==3,"state fields remain separate");
+        AgeScale state7=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,1,1,7);
+        check(state7.normalizedAge==1.0F&&state7.childScale==1.0F,"JYearsC transformation state 7 exception");
+        Input stateB=input(PLAYER_A,WORLD_A,100,31,7,"state-b").dbc(1,3,0,50,7,1);
+        DbcSpatialStateSnapshot stateBSnapshot=DbcSpatialStateSnapshot.capture(stateB);
+        check(stateBSnapshot.transformationState==0&&stateBSnapshot.nativeState==7,"visual nativeState is not transformation state");
+        AgeScale visual7=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,1,1,0);
+        check(visual7.normalizedAge==.5531915F&&visual7.childScale==3.0F-visual7.normalizedAge*2.0F,"nativeState 7 does not activate JYearsC exception");
+        AgeScale state8=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,1,1,8);
+        AgeScale state14=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,1,1,14);
+        check(state8.normalizedAge==1.0F&&state14.normalizedAge==1.0F,"JYearsC transformation states 8 and 14 exceptions");
+        AgeScale chakra=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,1,2,7);
+        AgeScale human=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.AVAILABLE,true,0,52,0,1,7);
+        check(chakra.normalizedAge==.5531915F&&human.normalizedAge==.5531915F,"native race/power gate selects zero state");
         AgeScale missing=DbcSpatialStateSnapshot.resolveJYearsCAge(Availability.UNAVAILABLE,false,0,52,0,1,0);
         check(missing.availability==Availability.UNAVAILABLE,"missing JYearsC data is not guessed");
 

@@ -207,9 +207,13 @@ continuação não declara a Fase 2 concluída nem libera joint-local.
 Fórmula observada de idade: yc começa em 1; na linha do player, idade A<=5
 atribui .5; A>5 e A<=gu atribui `.5+(A-5)/(gu-5)*.5`; A>gu atribui 1;
 depois aplica mínimo .5531915. As condições são sequenciais, não uma fórmula
-nova com clamp arbitrário. Saiyan/half-Saiyan nas formas 7/8 ou 14 retornam 1
-no helper. O renderer então aplica `3-yc*2`. Essas constantes descrevem o
-bytecode decompilado; não são fallback autorizado quando a captura está ausente.
+nova com clamp arbitrário. O helper lê o transformation state de
+`JRMCoreH.data(playerName,2,"0;0").split(";")[0]`; antes de testar 7/8/14 ele
+seleciona zero quando `powerType==2` ou `race==0`. Portanto esses estados são
+do dado de transformação, não `ModelBipedBody.y`/`nativeState`, e não devem
+ser substituídos silenciosamente pelo form cosmético. O renderer então aplica
+`3-yc*2`. Essas constantes descrevem o bytecode decompilado; não são fallback
+autorizado quando a captura está ausente.
 
 `func_130009_a` só atribui alguns campos dentro dos gates JYC/JFC e quando
 encontra dados do nome. Consequentemente, copiar os static gen/childScl/preg
@@ -243,7 +247,7 @@ fora do Git.
 | Ler idade do jogador | JRMCore 1.3.51 / `JRMCoreH` / `getFloat(EntityPlayer,String)` | Chave literal `JRYCAge`; leitura do dado do jogador | Anos JYearsC, `float`; não depende de câmera ou GL | O adaptador deve copiar o valor e a revisão do dado, sem chamar o tick do addon |
 | Atualizar idade | JYearsC 1.2.5 / `JYearsCComTickH` / `serverTick` | `JRMCoreH.getFloat`, `JRMCoreH.setFloat`, `JYearsCConfig.pls/pgut`; a cada dia em ticks 1, 6001, 12001, 18001 soma `0.25`; na dimensão DBC 23 soma `4.0` em múltiplos de 1000 | Efeito de servidor, com dano/mensagens/GUIs quando a vida termina; não é uma operação de captura | Nunca executar `serverTick` no snapshot. Ler apenas uma cópia autoritativa já resolvida |
 | Configuração | JYearsC 1.2.5 / `JYearsCConfig` / `init` | `pls` clamp [20, 1000000], `pgut` clamp [10, 100000] | Dias Minecraft; `pgut` é o crescimento adulto | Copiar os valores ativos e sua revisão; ausência é `UNAVAILABLE` |
-| Escala derivada | JBRA/JRMCore / `JRMCoreHJYC.JYCsizeBasedOnAge` | `yc=.5` até 5, depois `.5+(A-5)/(gu-5)*.5`, 1 acima de `gu`, mínimo `.5531915`; formas Sai/half Sai 7, 8 e 14 fixam 1; renderer usa `childScl=3-yc*2` | `A` e `gu` em anos/dias configurados; sem câmera/GL | `DbcSpatialStateSnapshot.resolveJYearsCAge` reproduz a ordem e deixa a escala indisponível se a linha/configuração faltar |
+| Escala derivada | JBRA/JRMCore / `JRMCoreHJYC.JYCsizeBasedOnAge` | `yc=.5` até 5, depois `.5+(A-5)/(gu-5)*.5`, 1 acima de `gu`, mínimo `.5531915`; transformation states Sai/half Sai 7, 8 e 14 fixam 1 após o gate race/power; renderer usa `childScl=3-yc*2` | `A` e `gu` em anos/dias configurados; sem câmera/GL | `DbcSpatialStateSnapshot.resolveJYearsCAge` reproduz a ordem e deixa a escala indisponível se a linha/configuração faltar |
 
 `JYearsCComTickH` também envia dados de proximidade e altera estado do jogador;
 por isso não é um provider espacial. O JYearsC JAR não contém `JYearsCH.p`, que
