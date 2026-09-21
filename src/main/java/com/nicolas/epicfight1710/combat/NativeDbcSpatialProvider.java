@@ -129,10 +129,14 @@ public final class NativeDbcSpatialProvider {
     /**
      * Consume the authoritative per-player snapshot without consulting any
      * renderer state.  Missing or stale inputs become an invalid descriptor;
-     * no native default is synthesized here.
+     * snapshot.geometryRevision must match config.revision. Consumers must
+     * recapture after a config change; no native default or silent update is used.
      */
     public Descriptor evaluate(DbcSpatialStateSnapshot snapshot,Config c){
         if(snapshot==null)return new Descriptor(null,c,"Missing spatial snapshot",null,null);
+        if(c==null)return new Descriptor(null,null,"Missing spatial config",null,null);
+        if(snapshot.geometryRevision!=c.revision)
+            return new Descriptor(null,c,"Snapshot/config spatial generation mismatch",null,null);
         State state=snapshot.toProviderState();
         if(state==null)return new Descriptor(null,c,"Snapshot data unavailable or unsupported",null,null);
         return evaluate(state,c);

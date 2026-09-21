@@ -1,6 +1,9 @@
 import com.nicolas.epicfight1710.combat.DbcSpatialStateSnapshot;
 import com.nicolas.epicfight1710.combat.DbcSpatialStateSnapshot.*;
 import com.nicolas.epicfight1710.combat.NativeDbcSpatialProvider;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Map;
 
 /** Deterministic contract tests for the per-player DBC spatial boundary. */
 public final class DbcSpatialStateSnapshotTest {
@@ -24,7 +27,7 @@ public final class DbcSpatialStateSnapshotTest {
         check(first.isValid(),first.invalidReason());
         check(first.isValidFor(PLAYER_A,WORLD_A,100,10,7),"initial identity");
         check(first.isUsableForNativeProvider(),"snapshot feeds proven provider inputs");
-        NativeDbcSpatialProvider.Config cfg=new NativeDbcSpatialProvider.Config(3,false,false,false,1000,null,null);
+        NativeDbcSpatialProvider.Config cfg=new NativeDbcSpatialProvider.Config(7,false,false,false,1000,null,null);
         NativeDbcSpatialProvider provider=new NativeDbcSpatialProvider();
         NativeDbcSpatialProvider.Descriptor descriptorA=provider.evaluate(first,cfg);
         check(descriptorA.isValid(),"provider consumes snapshot");
@@ -125,6 +128,104 @@ public final class DbcSpatialStateSnapshotTest {
         // guard, input or flight mutator is reachable from this API.
         Package p=DbcSpatialStateSnapshot.class.getPackage();
         check(p!=null&&"com.nicolas.epicfight1710.combat".equals(p.getName()),"pure combat package");
+        cacheLifecycle();
+        revisionExhaustion();
         System.out.println("PASS DbcSpatialStateSnapshotTest: "+checks+" assertions; cache evaluations="+c.completeEvaluations());
+    }
+
+    private static void cacheLifecycle(){
+        Cache c=cache();Object playerC=new Object();
+        NativeDbcSpatialProvider provider=new NativeDbcSpatialProvider();
+        NativeDbcSpatialProvider.Config config=new NativeDbcSpatialProvider.Config(7,false,false,false,1000,null,null);
+        DbcSpatialStateSnapshot first=c.capture(input(PLAYER_A,WORLD_A,100,10,7,"a"));
+        NativeDbcSpatialProvider.Descriptor firstDescriptor=provider.evaluate(first,config);
+        check(firstDescriptor.isValid(),"lifecycle initial descriptor");
+        DbcSpatialStateSnapshot changed=c.capture(input(PLAYER_A,WORLD_A,100,10,7,"changed"));
+        check(changed.spatialRevision>first.spatialRevision,"changed state advances cache revision");
+        check(!first.isCurrentIn(c)&&!first.isValidFor(PLAYER_A,WORLD_A,100,10,7),"replaced token stays stale");
+        NativeDbcSpatialProvider.Descriptor changedDescriptor=provider.evaluate(changed,config);
+        check(changedDescriptor.isValid(),"lifecycle changed descriptor");
+        DbcSpatialStateSnapshot b=c.capture(input(PLAYER_B,WORLD_A,100,10,7,"b"));
+        c.invalidate(PLAYER_A);
+        check(!changed.isCurrentIn(c)&&!changed.isValidFor(PLAYER_A,WORLD_A,100,10,7),"invalidate revokes snapshot token");
+        check(!changed.isUsableForNativeProvider(),"invalidated snapshot cannot feed provider");
+        check(c.get(PLAYER_A)==null&&c.currentSpatialRevision(PLAYER_A)==0,"invalidated player has no active revision");
+        check(!changedDescriptor.isValidFor(PLAYER_A,WORLD_A,100,c.currentSpatialRevision(PLAYER_A),7),"removed revision cannot validate descriptor");
+        check(c.isCurrent(b),"invalidate A leaves B current");
+        checkRegisteredPlayers(c,new Object[]{PLAYER_B},new Object[]{PLAYER_A});
+        c.invalidate(PLAYER_A); // Repeated removal cannot resurrect or retain A.
+        DbcSpatialStateSnapshot recaptured=c.capture(input(PLAYER_A,WORLD_A,100,10,7,"changed"));
+        check(recaptured.spatialRevision>b.spatialRevision&&recaptured.spatialRevision>changed.spatialRevision,"recapture never resets the revision");
+        check(!firstDescriptor.isValidFor(PLAYER_A,WORLD_A,100,recaptured.spatialRevision,7)
+            &&!changedDescriptor.isValidFor(PLAYER_A,WORLD_A,100,recaptured.spatialRevision,7),"pre-removal descriptors cannot match recapture");
+        check(!first.isValidFor(PLAYER_A,WORLD_A,100,10,7)&&!changed.isValidFor(PLAYER_A,WORLD_A,100,10,7),"recapture cannot reactivate old tokens");
+
+        DbcSpatialStateSnapshot third=c.capture(input(playerC,WORLD_A,100,10,7,"c"));
+        DbcSpatialStateSnapshot[] snapshots={recaptured,b,third};
+        NativeDbcSpatialProvider.Descriptor[] descriptors=new NativeDbcSpatialProvider.Descriptor[snapshots.length];
+        Object[] players={PLAYER_A,PLAYER_B,playerC};
+        for(int i=0;i<snapshots.length;i++){
+            descriptors[i]=provider.evaluate(snapshots[i],config);
+            check(descriptors[i].isValid(),"pre-clear descriptor "+i);
+        }
+        c.clear();
+        for(DbcSpatialStateSnapshot snapshot:snapshots){
+            check(!c.isCurrent(snapshot)&&!snapshot.isValidFor(snapshot.playerIdentity,WORLD_A,100,10,7),"clear revokes every token");
+            check(c.get(snapshot.playerIdentity)==null&&c.currentSpatialRevision(snapshot.playerIdentity)==0,"clear removes every registration");
+            check(!snapshot.isUsableForNativeProvider(),"cleared snapshot unavailable to provider");
+        }
+        checkRegisteredPlayers(c,new Object[0],players);
+        c.clear(); // Clearing an empty cache must not reset the lifetime counter.
+        long last=third.spatialRevision;
+        for(int i=0;i<players.length;i++){
+            DbcSpatialStateSnapshot fresh=c.capture(input(players[i],WORLD_A,100,10,7,snapshots[i].dnsRevision));
+            check(fresh.spatialRevision>last,"post-clear revision is globally monotonic within cache");last=fresh.spatialRevision;
+            check(!descriptors[i].isValidFor(players[i],WORLD_A,100,fresh.spatialRevision,7),"pre-clear descriptor cannot match new revision");
+            check(!snapshots[i].isValidFor(players[i],WORLD_A,100,10,7),"post-clear capture cannot revive old token");
+            check(c.capture(input(players[i],WORLD_A,100,10,7,snapshots[i].dnsRevision))==fresh,"unchanged recapture still reuses snapshot");
+        }
+    }
+
+    /** Inspect owned storage directly: no GC timing and no auxiliary player ledger. */
+    private static void checkRegisteredPlayers(Cache c,Object[] active,Object[] removed){
+        try{
+            int maps=0;
+            for(Field field:Cache.class.getDeclaredFields()){
+                if(Modifier.isStatic(field.getModifiers()))continue;
+                field.setAccessible(true);Object storage=field.get(c);
+                if(storage instanceof Map){
+                    maps++;Map<?,?> map=(Map<?,?>)storage;
+                    check(map.size()==active.length,"cache owns exactly the active players");
+                    for(Object player:active)check(map.get(player)==c.get(player),"only active snapshot storage");
+                    for(Object player:removed){
+                        check(!map.containsKey(player),"removed identity is not a cache key");
+                        for(Object value:map.values()){
+                            check(value instanceof DbcSpatialStateSnapshot,"no auxiliary identity record");
+                            check(((DbcSpatialStateSnapshot)value).playerIdentity!=player,"removed identity is not retained by cache values");
+                        }
+                    }
+                }else check(field.getType().isPrimitive(),"no other cache field can retain a player");
+            }
+            check(maps==1,"cache has one active snapshot map and no revision map");
+        }catch(ReflectiveOperationException e){throw new AssertionError(e);}
+    }
+
+    private static void revisionExhaustion(){
+        Cache c=cache();
+        try{
+            Field counter=Cache.class.getDeclaredField("lastSpatialRevision");counter.setAccessible(true);
+            counter.setLong(c,Long.MAX_VALUE-1);
+        }catch(ReflectiveOperationException e){throw new AssertionError(e);}
+        DbcSpatialStateSnapshot last=c.capture(input(PLAYER_A,WORLD_A,100,10,7,"last"));
+        check(last.spatialRevision==Long.MAX_VALUE,"last monotonic revision supported");
+        check(c.capture(input(PLAYER_A,WORLD_A,100,10,7,"last"))==last,"reuse does not allocate a revision");
+        boolean rejected=false;
+        try{c.capture(input(PLAYER_A,WORLD_A,100,10,7,"overflow"));}catch(IllegalStateException expected){rejected=true;}
+        check(rejected&&c.isCurrent(last),"exhaustion fails explicitly without wrap or partial invalidation");
+        c.clear();check(!last.isValidFor(PLAYER_A,WORLD_A,100,10,7),"exhausted cache can still revoke snapshots");
+        rejected=false;
+        try{c.capture(input(PLAYER_A,WORLD_A,100,10,7,"last"));}catch(IllegalStateException expected){rejected=true;}
+        check(rejected,"clear cannot restart exhausted revision sequence");
+        checkRegisteredPlayers(c,new Object[0],new Object[]{PLAYER_A});
     }
 }

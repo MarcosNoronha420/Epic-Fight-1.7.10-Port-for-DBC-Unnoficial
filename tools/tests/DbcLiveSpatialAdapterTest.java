@@ -207,6 +207,7 @@ public final class DbcLiveSpatialAdapterTest {
 
         independentFields(world,a);
         nativePresentationOracle(world,a);
+        generationConsistency(world,a);
         Resolver noCore=new Resolver();noCore.types.remove("JinRyuu.JRMCore.JRMCoreH");
         ReflectiveDbcSpatialSource absent=new ReflectiveDbcSpatialSource(noCore);
         check(absent.read(a).jrmCore==Availability.NOT_APPLICABLE,"missing addon safe");
@@ -229,6 +230,33 @@ public final class DbcLiveSpatialAdapterTest {
         check(mutations==0,"no setters/ticks/mutators");
         adapter.clear();check(!adapter.isCurrent(changed),"disconnect invalidates retained samples");
         System.out.println("PASS live spatial adapter: "+checks+" checks; no graphics/native runtime required");
+    }
+    private static void generationConsistency(World world,Player player){
+        reset(world,player);
+        ReflectiveDbcSpatialSource source=new ReflectiveDbcSpatialSource(new Resolver());
+        DbcLiveSpatialConfigAdapter configs=new DbcLiveSpatialConfigAdapter(source);
+        DbcLiveSpatialAdapter adapter=new DbcLiveSpatialAdapter(source,configs);
+        NativeDbcSpatialProvider provider=new NativeDbcSpatialProvider();
+        DbcLiveSpatialConfigAdapter.Snapshot configA=configs.capture();
+        DbcSpatialStateSnapshot a=capture(adapter,player);
+        check(configA.revision==1&&a.geometryRevision==configA.revision,"generation A captured with config revision 1");
+        check(provider.evaluate(a,configA.config).isValid(),"matching generation A accepted");
+        Dbc.ConsSizeChangeOn=true;
+        DbcLiveSpatialConfigAdapter.Snapshot configB=configs.capture();
+        check(configB.revision==2,"global config mutation creates revision 2");
+        NativeDbcSpatialProvider.Descriptor mixed=provider.evaluate(a,configB.config);
+        check(!mixed.isValid()&&mixed.state==null,"old snapshot/new config rejected before State conversion");
+        check(mixed.invalidReason().contains("generation mismatch"),"generation mismatch has explicit reason");
+        check(adapter.isCurrent(a)&&a.geometryRevision==configA.revision,"mismatch neither updates nor recaptures snapshot silently");
+        DbcSpatialStateSnapshot b=capture(adapter,player);
+        check(b.geometryRevision==configB.revision,"generation B recaptured with new config");
+        stale(adapter,a,b,"config generation recapture");
+        check(provider.evaluate(b,configB.config).isValid(),"matching generation B accepted");
+        NativeDbcSpatialProvider.Descriptor inverse=provider.evaluate(b,configA.config);
+        check(!inverse.isValid()&&inverse.state==null&&inverse.invalidReason().contains("generation mismatch"),"new snapshot/old config rejected");
+        NativeDbcSpatialProvider.Descriptor missing=provider.evaluate(b,null);
+        check(!missing.isValid()&&missing.state==null&&missing.invalidReason().contains("Missing spatial config"),"null config rejected before State conversion");
+        reset(world,player);
     }
     private static void nativePresentationOracle(World world,Player a){
         reset(world,a);

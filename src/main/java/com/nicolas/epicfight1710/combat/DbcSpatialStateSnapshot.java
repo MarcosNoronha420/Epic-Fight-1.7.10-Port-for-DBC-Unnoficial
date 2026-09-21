@@ -148,34 +148,39 @@ public final class DbcSpatialStateSnapshot {
         }
     }
 
-    /** Single-thread game-loop cache. Identity keys prevent player/world mixing. */
+    /** Single-thread game-loop cache. Only active snapshots retain players.
+     * Revisions increase across the cache's lifetime, including invalidate/clear. */
     public static final class Cache {
         private final IdentityHashMap<Object,DbcSpatialStateSnapshot> byPlayer=new IdentityHashMap<Object,DbcSpatialStateSnapshot>();
-        private final IdentityHashMap<Object,CurrentRevision> revisions=new IdentityHashMap<Object,CurrentRevision>();
+        private long lastSpatialRevision;
         private long evaluations;
         public DbcSpatialStateSnapshot capture(Input input) {
             if(input==null||input.playerIdentity==null)throw new IllegalArgumentException("Player input required");
             DbcSpatialStateSnapshot old=byPlayer.get(input.playerIdentity);
             if(old!=null&&old.matches(input))return old;
-            CurrentRevision current=revisions.get(input.playerIdentity);
-            if(current==null){current=new CurrentRevision();revisions.put(input.playerIdentity,current);}
-            current.value=current.value==Long.MAX_VALUE?1:current.value+1;
+            // Never wrap/reuse a revision, even after the player leaves or clear().
+            if(lastSpatialRevision==Long.MAX_VALUE)throw new IllegalStateException("Spatial revision exhausted");
+            CurrentRevision current=new CurrentRevision();
+            current.value=++lastSpatialRevision;
             DbcSpatialStateSnapshot fresh=new DbcSpatialStateSnapshot(input,current,current.value);
+            if(old!=null)old.currentRevision.value=0;
             byPlayer.put(input.playerIdentity,fresh);evaluations++;return fresh;
         }
         public long completeEvaluations(){return evaluations;}
         public DbcSpatialStateSnapshot get(Object player){return byPlayer.get(player);}
         public long currentSpatialRevision(Object player){
-            CurrentRevision current=revisions.get(player);return current==null?0:current.value;
+            DbcSpatialStateSnapshot current=byPlayer.get(player);return current==null?0:current.spatialRevision;
         }
         public boolean isCurrent(DbcSpatialStateSnapshot snapshot){
             return snapshot!=null&&byPlayer.get(snapshot.playerIdentity)==snapshot&&snapshot.isCurrentRevision();
         }
         public void invalidate(Object player){
-            byPlayer.remove(player);CurrentRevision current=revisions.get(player);if(current!=null)current.value=current.value==Long.MAX_VALUE?1:current.value+1;
+            DbcSpatialStateSnapshot removed=byPlayer.remove(player);
+            if(removed!=null)removed.currentRevision.value=0;
         }
         public void clear(){
-            byPlayer.clear();for(CurrentRevision current:revisions.values())current.value=current.value==Long.MAX_VALUE?1:current.value+1;
+            for(DbcSpatialStateSnapshot current:byPlayer.values())current.currentRevision.value=0;
+            byPlayer.clear();
         }
     }
 

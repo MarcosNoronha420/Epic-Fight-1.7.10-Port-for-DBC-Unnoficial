@@ -16,6 +16,8 @@ NativeDbcSpatialProvider.Descriptor descriptor = provider.evaluate(sample, confi
 // Reuse sample/descriptor for the consumers of this sample. No capture per target.
 // On a later capture, check adapter.isCurrent(sample) before retaining the sample.
 // Descriptors use sample.spatialRevision and config.revision, never actionRevision.
+// A missing config or sample.geometryRevision != config.revision is rejected.
+// Recapture the sample after a config change; never mix spatial generations.
 // Disconnect: adapter.clear(); player removal: adapter.invalidate(player).
 ```
 
@@ -33,6 +35,26 @@ immutable copies. No hash substitutes for identity. Copies occur on config
 changes only. Every explicit capture rereads live values to detect same-tick
 changes; it does not discover reflection handles again or evaluate poses/joints.
 The caller should capture once per spatial sample, then share the result.
+
+Snapshot and Config form one consistent spatial generation:
+`snapshot.geometryRevision == config.revision`. The snapshot overload of
+`NativeDbcSpatialProvider.evaluate` rejects a null config or a revision mismatch
+with an explicit invalid descriptor **before** converting the snapshot into State.
+It does not update or recapture the snapshot. After config changes, the consumer
+must capture again. Both old-snapshot/new-config and new-snapshot/old-config pairs
+are rejected. The existing snapshot-currentness check remains required as well.
+
+The player cache owns only one identity map of active snapshots. Its spatial
+revision counter increases across the entire lifetime of that cache, across
+players and across `invalidate`/`clear`; it never resets or wraps. Each snapshot
+has a liveness token without player references. Replacing a snapshot revokes its
+old token; invalidating a player revokes the removed snapshot's token and removes
+the only registration. Clearing revokes all active tokens, then empties the map.
+`currentSpatialRevision` returns zero for an unregistered player. Recapturing the
+same player/world/tick gets a new revision, so a retained old descriptor cannot
+match it. Revision exhaustion throws explicitly rather than reusing a number.
+There is no auxiliary map retaining removed players. Consumers that retain an
+old snapshot themselves still own that snapshot's player reference.
 
 ## Audited runtime sources
 
@@ -89,6 +111,13 @@ Prone, directional/fast flight, KO, UI, spectator and Oozaru remain rejected for
 the native spatial descriptor. Their available logical state can still be
 represented by the snapshot. UI timer is read to choose the branch; the complete
 time-varying UI geometry is not described. Existing visual behavior is untouched.
+
+Invisibility currently makes body availability unavailable as a conservative
+adapter policy. This correction does not change that policy. Visual invisibility
+has **not** been defined as physical absence for combat. Before joint-local
+collider work, a separate decision is required on whether an invisible player
+continues to have a spatial body/collider; unavailability must not be interpreted
+as that gameplay decision.
 
 ## Availability, reflection and purity
 
@@ -154,12 +183,13 @@ Required previous suites: `run_dbc_state_snapshot.ps1`, `run_native_spatial.ps1`
 from repository root; JARs, generated oracles/classes and logs stay ignored.
 Results for this delivery are recorded after execution below.
 
-Observed on Java `1.8.0_503`, ECJ `-1.8` (all exited successfully):
+Observed after the generation-consistency correction on Java `1.8.0_503`,
+ECJ `-1.8` (all six suites exited successfully; existing checks preserved):
 
 | Suite | Observed result |
 |---|---|
-| `run_dbc_live_spatial.ps1` | 1,559 checks, including production reflection path and 768 native presentation combinations; exact-JAR DNS/presentation oracles generated under build only |
-| `run_dbc_state_snapshot.ps1` | 146 assertions preserved |
+| `run_dbc_live_spatial.ps1` | 1,580 checks, including config/snapshot generation mismatch in both directions, null config, production reflection path and 768 native presentation combinations; exact-JAR oracles generated under build only |
+| `run_dbc_state_snapshot.ps1` | 207 assertions; existing 146 retained, plus cache replacement/invalidate/clear, structural retention checks without GC, recapture/descriptor collision checks and explicit revision-exhaustion rejection |
 | `run_native_spatial.ps1` | 180,900 assertions; 35,280 scale states and 84 body cases; shared f1 extraction matches native equations |
 | `run_combat_pose.ps1` | 3,587,358 assertions; 180 bit-identical baseline composition samples; existing collider/weapon/style regressions also pass (no new implementation) |
 | `run_dbc_spatial.ps1` | 622,593 assertions; real render sources compile headlessly and previous pose regressions pass |
