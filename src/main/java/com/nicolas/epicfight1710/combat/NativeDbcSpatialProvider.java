@@ -100,17 +100,12 @@ public final class NativeDbcSpatialProvider {
             if(s.race==3&&s.form==3&&c.godCosmetics&&s.divine){bulk=1.1F;size=1.5F;}
         }
         int variant=s.modelVariant;
-        float base=variant<=1?.73F:.7F,scale=base;
-        int max=c.maxAttribute>1000000000?1000000000:c.maxAttribute<100?0:c.maxAttribute;
-        scale+=c.constitutionSize?.192F*(float)(s.constitution>max?max:s.constitution)/(float)max:.2F;
+        float scale=bodyScale(variant,s.constitution,s.release,c);
         int release=s.release;
         float candidate=(size-1.0F)*(float)release*.02F+1.0F;
         size=candidate>size?size:(size>1.0F?candidate:size);
         float bulkCandidate=(bulk-1.0F)*(float)release*.02F+1.0F;
         bulk=bulk>1.0F?bulkCandidate:bulk;
-        float delta=(scale-base)*(release<=50?.25F:.5F);
-        float deltaCurrent=delta*(float)release*.02F;
-        scale=scale-base-delta+deltaCurrent+base;
         float[] outer={scale*bulk*size,scale*size,scale*bulk*size};
         float f=s.ageDivisor;
         float h=.5F+.5F/f;
@@ -141,6 +136,17 @@ public final class NativeDbcSpatialProvider {
         State state=snapshot.toProviderState();
         if(state==null)return new Descriptor(null,c,"Snapshot data unavailable or unsupported",null,null);
         return evaluate(state,c);
+    }
+    /** Native scalar f1 before anisotropic race/form multipliers. Shared by the
+     * live snapshot and descriptor; NOT a complete body/world transform. */
+    public static float bodyScale(int variant,int constitution,int release,Config c){
+        if(c==null||variant<1||variant>3||constitution<0||release<0||release>100)return Float.NaN;
+        float base=variant<=1?.73F:.7F,scale=base;
+        int max=c.maxAttribute>1000000000?1000000000:c.maxAttribute<100?0:c.maxAttribute;
+        scale+=c.constitutionSize?.192F*(float)(constitution>max?max:constitution)/(float)max:.2F;
+        float delta=(scale-base)*(release<=50?.25F:.5F);
+        float deltaCurrent=delta*(float)release*.02F;
+        return scale-base-delta+deltaCurrent+base;
     }
     private static float[] basis(float x,float y,float z,float tx,float ty,float tz){return new float[]{x,y,z,tx,ty,tz};}
     private static boolean entry(float[][] a,int race,int form){return a!=null&&race<a.length&&a[race]!=null&&form<a[race].length&&positive(a[race][form]);}

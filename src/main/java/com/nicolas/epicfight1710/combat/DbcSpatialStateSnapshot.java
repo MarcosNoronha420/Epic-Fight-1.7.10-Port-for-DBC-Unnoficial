@@ -7,8 +7,8 @@ import java.util.IdentityHashMap;
  *
  * <p>This type is deliberately a data boundary.  It does not discover state,
  * call Minecraft/DBC methods, read renderer statics, touch OpenGL, or advance
- * any clock.  A future read-only adapter may build an {@link Input} from
- * authoritative game data; until then missing data remains explicitly
+ * any clock.  The read-only live adapter builds an {@link Input} from
+ * authoritative game data; missing data remains explicitly
  * unavailable rather than being guessed.</p>
  */
 public final class DbcSpatialStateSnapshot {
@@ -29,10 +29,11 @@ public final class DbcSpatialStateSnapshot {
     public final int race, form, transformationState, constitution, release, nativeState, powerType;
     public final int bodyType, modelVariant, gender;
     public final boolean child, sneaking, divine, spectator;
+    /** bodyScale is native f1 before race/form anisotropy, not a world transform. */
     public final float modelPixelScale, bodyScale, ageYears, adultGrowth, ageScale, ageDivisor;
     public final FlightState flight;
     public final BodyPresentation presentation;
-    /** A stable caller-provided revision/digest of DNS data; raw DNS is not copied. */
+    /** Stable DNS revision/digest; the live adapter uses the exact immutable string. */
     public final String dnsRevision;
     /** Monotonic revision of the DBC/JBRA spatial state, independent of actionRevision. */
     public final long spatialRevision;
@@ -218,6 +219,7 @@ public final class DbcSpatialStateSnapshot {
         /** nativeState is visual/native y; it is never used by JYearsC age math. */
         public Input dbc(int race,int form,int transformationState,int release,int nativeState,int powerType){this.race=race;this.form=form;this.transformationState=transformationState;this.release=release;this.nativeState=nativeState;this.powerType=powerType;dbcAvailability=Availability.AVAILABLE;return this;}
         public Input constitution(int value){constitution=value;return this;}
+        public Input dbcAvailability(Availability status){dbcAvailability=require(status);return this;}
         public Input body(int bodyType,int modelVariant,int gender,boolean child,boolean sneaking,boolean divine,boolean spectator,float modelPixelScale){this.bodyType=bodyType;this.modelVariant=modelVariant;this.gender=gender;this.child=child;this.sneaking=sneaking;this.divine=divine;this.spectator=spectator;this.modelPixelScale=modelPixelScale;bodyAvailability=Availability.AVAILABLE;return this;}
         public Input bodyScale(float value){bodyScale=value;return this;}
         public Input jrmCore(Availability status){jrmCoreAvailability=require(status);return this;}

@@ -285,9 +285,35 @@ Estados ausentes, atrasados ou incompatíveis permanecem explicitamente
 `UNAVAILABLE` e produzem descritor inválido quando são necessários. JYearsC
 `NOT_APPLICABLE` preserva o caso comprovado sem addon com divisor 1; isso não é
 um valor inventado para um addon ausente. JFamilyC não é inferido de statics do
-renderer. Não existe ainda um adaptador live que leia Minecraft/JRMCore sem
-acoplar side effects; criar esse adaptador é a próxima fronteira segura.
+renderer. Na etapa do snapshot, o adaptador live ainda era a próxima fronteira;
+a captura somente de leitura está documentada na seção de continuação abaixo.
 
 O snapshot não altera `FirstPersonBodyRenderer1710`, WORLD-BODY, Tool_R, JBRA,
 flight, dash, clips, timing, CPS, guard, damage ou weapon behavior. Também não
 implementa collider, sockets finais ou transformação completa para world.
+
+## Continuação: fontes live auditadas (DBC 1.4.85 / JRMCore 1.3.51)
+
+O adapter de leitura está em `DBC-LIVE-SPATIAL-ADAPTER.md`. A nova inspeção
+confirma as seguintes fontes, sem executar ticks ou renderers:
+
+| Dado | Evidência nos JARs exatos | Consequência para captura |
+|---|---|---|
+| Idade sincronizada | `JinRyuu.JRMCore.JYearsCH.p` é `public static String[]`; `JRMCoreHJYC.JYCAge/JYCsizeBasedOnAge` selecionam por nome | Ler linha nome/idade; não substituir linha atrasada pela idade default do helper. O campo pertence ao JAR JRMCore. |
+| Contexto de cliente | `DragonBC/common/DBCClient.mc`, inicialmente `Minecraft.func_71410_x()` | Ler somente após inicialização nativa; comparar world e identidade local sem executar inicialização/render hooks. |
+| Config do provider | `mod_DragonBC.ConsSizeChangeOn/TransSizeChangeOn`, `DBCConfig.GodformCosm`, `JRMCoreConfig.tmx`, tabelas `JRMCoreH.Trans*` | Captura imutável global, revisão por conteúdo; Saiyan/Half-Saiyan compartilham as tabelas Sai. |
+| Status | `StusEfctsClient(int,EntityPlayer)` usa `data(nome,19,...)` completo; overload com índice usa `.split(";")[1]` | Os overloads não têm a mesma implementação. Preservar a distinção nas condições originais, com linhas presentes. |
+| UI | `ExtendedPlayer.getUIAnim/getUIAnimID` -> `getOtherCode(7/9)` -> DataWatcher string em `JRMCoreConfig.ExtendedPlayerOtherID` | Getter é leitura, mas possui fallback de 12 zeros. O adapter lê a mesma string e marca layout ausente/malformado como indisponível. |
+| KO/prone/normal | `RenderPlayerJBRA.func_77041_b`: data4 coluna 2; UI; status 7 ou status 9 + data3 1 sem status 4; onGround | É possível reproduzir a **seleção** de y sem GL e sem as escritas nativas em yaw/pitch. O oracle gerado compara a ordem e condições originais. A transformação world continua fora do escopo. |
+| Voo local rápido | `DBCKiTech.FloatKi`: `private static boolean dodge_forwDash_STE`, limpa `floating` durante swoop e sincroniza status 7 | Leitura por handle de campo privado apenas para a identidade local. Nunca chamar `FloatKi`, que altera movimento/input/pacotes. |
+| Direção de voo | `FloatKi`: status 9 sem status 4 seleciona movimento por yaw/pitch no ramo frontal; renderer usa status/data3 como apresentação | O snapshot representa os flags lógicos disponíveis; não adivinha teclas nem corrige a apresentação do port. |
+
+`tools/tests/prepare_live_spatial_oracles.py` verifica hashes antes de decompilar
+essas classes para `build/`. Gera os parsers DNS e a seleção original de y para
+testes standalone. Os métodos com efeitos colaterais servem somente como
+evidência de semântica; nunca são invocados pela captura de produção.
+
+O campo escalar `bodyScale` agora recebe f1 do kernel existente, extraído sem
+alterar a ordem das operações. Ele não inclui anisotropia de raça/form, não
+é escala final world e não tenta representar o override de Oozaru. Continua
+valendo a fronteira anterior de partes/sockets/topologia e voo rápido.
