@@ -19,6 +19,7 @@ public final class DbcSpatialStateSnapshot {
     public final Object playerIdentity;
     public final Object worldIdentity;
     public final int gameTick;
+    /** Identity/revision of the action or animation execution. */
     public final long actionRevision;
     public final long geometryRevision;
     public final Availability playerAvailability, worldAvailability, dbcAvailability;
@@ -33,7 +34,7 @@ public final class DbcSpatialStateSnapshot {
     public final BodyPresentation presentation;
     /** A stable caller-provided revision/digest of DNS data; raw DNS is not copied. */
     public final String dnsRevision;
-    /** Monotonic identity inside the cache for this player's current spatial state. */
+    /** Monotonic revision of the DBC/JBRA spatial state, independent of actionRevision. */
     public final long spatialRevision;
     // The data is immutable; this private token is only the cache's liveness
     // marker, so an older object can be recognized as stale without mutating
@@ -102,7 +103,7 @@ public final class DbcSpatialStateSnapshot {
     /** Convert only a proven, complete partial input to the existing math kernel. */
     NativeDbcSpatialProvider.State toProviderState() {
         if(!isUsableForNativeProvider())return null;
-        return new NativeDbcSpatialProvider.State(playerIdentity,worldIdentity,gameTick,actionRevision,
+        return new NativeDbcSpatialProvider.State(playerIdentity,worldIdentity,gameTick,spatialRevision,
             race,form,constitution,release,modelVariant,ageDivisor,
             modelPixelScale,child,sneaking,divine,spectator,nativeState,
             flight==FlightState.GROUNDED?NativeDbcSpatialProvider.Flight.GROUNDED:NativeDbcSpatialProvider.Flight.NORMAL,

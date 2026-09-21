@@ -31,7 +31,8 @@ public final class NativeDbcSpatialProvider {
 
     /** Parsed immutable tick inputs. modelVariant is native gen/g (1..3), NOT
      * a cosmetic body-type index. ageDivisor is the independently resolved f.
-     * revision must change for any spatial-state change within the same tick.
+     * revision is the snapshot's spatialRevision and must change for any
+     * spatial-state change within the same tick; it is not an action serial.
      * Normal flight means the port's non-prone presentation; FAST is unsupported.
      */
     public static final class State {

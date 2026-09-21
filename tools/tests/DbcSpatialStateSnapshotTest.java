@@ -25,7 +25,10 @@ public final class DbcSpatialStateSnapshotTest {
         check(first.isValidFor(PLAYER_A,WORLD_A,100,10,7),"initial identity");
         check(first.isUsableForNativeProvider(),"snapshot feeds proven provider inputs");
         NativeDbcSpatialProvider.Config cfg=new NativeDbcSpatialProvider.Config(3,false,false,false,1000,null,null);
-        check(new NativeDbcSpatialProvider().evaluate(first,cfg).isValid(),"provider consumes snapshot");
+        NativeDbcSpatialProvider provider=new NativeDbcSpatialProvider();
+        NativeDbcSpatialProvider.Descriptor descriptorA=provider.evaluate(first,cfg);
+        check(descriptorA.isValid(),"provider consumes snapshot");
+        check(descriptorA.state.revision==first.spatialRevision,"State.revision uses spatialRevision");
 
         // Zero, one or ten render attempts cannot create another spatial evaluation.
         for(int renders=0;renders<=10;renders++){
@@ -55,7 +58,11 @@ public final class DbcSpatialStateSnapshotTest {
         check(changed.spatialRevision>first.spatialRevision,"spatial revision advances on state change");
         check(!first.isValidFor(PLAYER_A,WORLD_A,100,10,7),"old snapshot becomes stale after DNS change");
         check(!first.isCurrentIn(c)&&c.isCurrent(changed),"cache identifies only the current spatial snapshot");
-        check(!new NativeDbcSpatialProvider().evaluate(first,cfg).isValid(),"provider rejects stale spatial snapshot");
+        check(!descriptorA.isValidFor(PLAYER_A,WORLD_A,100,changed.spatialRevision,cfg.revision),"old descriptor fails current spatial revision");
+        NativeDbcSpatialProvider.Descriptor descriptorB=provider.evaluate(changed,cfg);
+        check(descriptorB.isValid(),"new descriptor is valid");
+        check(descriptorB.state.revision==changed.spatialRevision,"new State.revision uses spatialRevision");
+        check(descriptorB.isValidFor(PLAYER_A,WORLD_A,100,changed.spatialRevision,cfg.revision),"new descriptor matches spatial revision");
         check(changed.isValidFor(PLAYER_A,WORLD_A,100,10,7),"new snapshot remains current with same external revisions");
         Input changedState=input(PLAYER_A,WORLD_A,100,10,7,"same-envelope").dbc(1,3,0,50,1,1).body(0,2,0,false,false,false,false,.0625F).bodyScale(1.0F);
         DbcSpatialStateSnapshot changedStateSnapshot=c.capture(changedState);
